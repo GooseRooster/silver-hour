@@ -2,17 +2,22 @@
 # Set zsh as the login shell for human users.
 #
 # Accounts are created by the graphical installer, so the login shell cannot be
-# declared at build time. This runs from silver-hour-set-login-shell.service on
-# every boot and is idempotent: it only touches normal users (uid 1000-59999)
-# still on the default bash.
+# declared at build time (though /etc/default/useradd asks for zsh when the
+# installer honours it). This runs from silver-hour-set-login-shell.service on
+# every boot, before the display manager, and is idempotent: it only touches
+# normal users (uid 1000-59999) still on the default bash.
+#
+# GDM reads a user's shell from AccountsService, whose cache is written the
+# first time the user is seen and would otherwise keep the old bash value, so
+# the cache is updated too.
 set -euo pipefail
 
-[ -x /usr/bin/zsh ] || exit 0
+ZSH=/usr/bin/zsh
+[ -x "$ZSH" ] || exit 0
 
-# Make the shell an accepted login shell even if the image's /etc/shells was
-# not seeded. Idempotent.
-if ! grep -qxF /usr/bin/zsh /etc/shells 2>/dev/null; then
-  printf '%s\n' /usr/bin/zsh >> /etc/shells
+# Make the shell an accepted login shell even if /etc/shells was not seeded.
+if ! grep -qxF "$ZSH" /etc/shells 2>/dev/null; then
+  printf '%s\n' "$ZSH" >> /etc/shells
 fi
 
 while IFS=: read -r user _pass uid _gid _gecos _home shell; do
@@ -22,7 +27,12 @@ while IFS=: read -r user _pass uid _gid _gecos _home shell; do
 
   case "$shell" in
     /bin/bash | /usr/bin/bash)
-      usermod -s /usr/bin/zsh "$user"
+      usermod -s "$ZSH" "$user"
+
+      accounts_file="/var/lib/AccountsService/users/$user"
+      if [ -f "$accounts_file" ]; then
+        sed -i "s|^Shell=.*|Shell=$ZSH|" "$accounts_file"
+      fi
       ;;
   esac
 done < /etc/passwd
