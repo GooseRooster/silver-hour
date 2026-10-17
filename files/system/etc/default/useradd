@@ -1,9 +1,12 @@
 # Defaults for useradd.
 #
-# SHELL is set to zsh so users created by the installer (or by
-# bootc-image-builder for local testing) get the silver-hour login shell from
-# creation. silver-hour-set-login-shell.service still re-applies it on boot for
-# any account that was created on bash.
+# SHELL is set to zsh so users created by the installer or by
+# gnome-initial-setup (which goes through AccountsService/useradd) get the
+# silver-hour login shell from creation. zsh MUST be listed in /etc/shells for
+# AccountsService to treat such accounts as human; see files/system/etc/shells,
+# the build-time assertion in recipes/common.yml, and
+# silver-hour-set-login-shell. The boot service still re-applies zsh for any
+# account that was created on bash.
 GROUP=100
 HOME=/home
 INACTIVE=-1

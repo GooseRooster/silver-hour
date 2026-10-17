@@ -1,7 +1,9 @@
 [Unit]
 Description=Set zsh as the login shell for human users
 After=local-fs.target
-Before=display-manager.service
+# /etc/shells must list zsh before AccountsService (and therefore GDM) classifies
+# accounts, otherwise a zsh account is treated as a system account.
+Before=display-manager.service accounts-daemon.service
 ConditionPathExists=/usr/bin/zsh
 
 [Service]

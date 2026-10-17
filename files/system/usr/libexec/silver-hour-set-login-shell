@@ -1,24 +1,27 @@
 #!/usr/bin/bash
 # Set zsh as the login shell for human users.
 #
-# Accounts are created by the graphical installer, so the login shell cannot be
-# declared at build time (though /etc/default/useradd asks for zsh when the
-# installer honours it). This runs from silver-hour-set-login-shell.service on
-# every boot, before the display manager, and is idempotent: it only touches
-# normal users (uid 1000-59999) still on the default bash.
+# Accounts are created by the installer / gnome-initial-setup through
+# AccountsService (useradd), which honours the SHELL in /etc/default/useradd, so
+# new users are normally created on zsh already. This runs from
+# silver-hour-set-login-shell.service on every boot, before the display manager,
+# and is idempotent: it only touches normal users (uid 1000-59999) still on
+# bash.
 #
-# GDM reads a user's shell from AccountsService, whose cache is written the
-# first time the user is seen and would otherwise keep the old bash value, so
-# the cache is updated too.
+# AccountsService classifies an account as a "human" account (and hence one GDM
+# will show and start) partly from the login shell: a shell not listed in
+# /etc/shells is treated as a system shell, and the account is cached as
+# SystemAccount=true in /var/lib/AccountsService/users/<user>. That cached value
+# wins over later re-checks, so we keep zsh in /etc/shells and drop a stale
+# SystemAccount flag for users whose shell is now valid.
 set -euo pipefail
 
 ZSH=/usr/bin/zsh
 [ -x "$ZSH" ] || exit 0
 
-# Make the shell an accepted login shell even if /etc/shells was not seeded.
-if ! grep -qxF "$ZSH" /etc/shells 2>/dev/null; then
-  printf '%s\n' "$ZSH" >> /etc/shells
-fi
+# Make zsh an accepted login shell. `||` also covers a missing /etc/shells,
+# where grep exits 2 (the old `if ! grep` treated that as "present").
+grep -qxF "$ZSH" /etc/shells 2>/dev/null || printf '%s\n' "$ZSH" >> /etc/shells
 
 while IFS=: read -r user _pass uid _gid _gecos _home shell; do
   # Human users only: skip system accounts and the nobody/nfsnobody range.
@@ -28,13 +31,22 @@ while IFS=: read -r user _pass uid _gid _gecos _home shell; do
   case "$shell" in
     /bin/bash | /usr/bin/bash)
       usermod -s "$ZSH" "$user"
-
-      accounts_file="/var/lib/AccountsService/users/$user"
-      if [ -f "$accounts_file" ]; then
-        sed -i "s|^Shell=.*|Shell=$ZSH|" "$accounts_file"
-      fi
+      ;;
+    /bin/zsh | /usr/bin/zsh)
+      ;;
+    *)
+      # Not a shell we manage (e.g. nologin): leave the account alone.
+      continue
       ;;
   esac
+
+  # AccountsService stores its human/system verdict as `SystemAccount` (its
+  # `Shell` always comes from /etc/passwd), so clear a stale flag to let GDM
+  # re-classify the account from the now-valid shell.
+  accounts_file="/var/lib/AccountsService/users/$user"
+  if [ -f "$accounts_file" ]; then
+    sed -i '/^SystemAccount=/d' "$accounts_file"
+  fi
 done < /etc/passwd
 
 exit 0

@@ -144,8 +144,9 @@ modules:
     system:
       enabled:
         - ananicy-cpp.service
-        # Installer-created users start on bash; this idempotent oneshot sets
-        # /usr/bin/zsh as their login shell before the display manager.
+        # Repairs users created on bash (installer) by setting /usr/bin/zsh
+        # before the display manager, and keeps zsh listed in /etc/shells so
+        # AccountsService/GDM treat it as a valid human login shell.
         - silver-hour-set-login-shell.service
 
   # --- Branding ----------------------------------------------------------
@@ -182,3 +183,15 @@ modules:
   - from-file: common-desktop.yml
   - from-file: common-updates.yml
   - from-file: common-userland.yml
+
+  # --- Login shell sanity -------------------------------------------------
+  # AccountsService treats an account whose login shell is not listed in
+  # /etc/shells as a system account and GDM then refuses to show/start it,
+  # which breaks first-time setup. Package transactions can rewrite /etc/shells
+  # from the `setup` package default (sh/bash only), so re-assert zsh as the
+  # last common step; gaming.yml repeats this after its own installs.
+  - type: script
+    snippets:
+      - >-
+        grep -qxF /usr/bin/zsh /etc/shells ||
+        printf '%s\n' /usr/bin/zsh >> /etc/shells
