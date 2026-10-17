@@ -86,14 +86,15 @@ modules:
         # Applies the Steam skin once ~/.steam/steam appears (first launch).
         - silver-hour-steam-theme.path
 
-  # Re-assert zsh in /etc/shells after the Steam/Wine installs above (see
-  # common.yml): a login shell missing from /etc/shells makes AccountsService
-  # classify the account as a system account and breaks GDM/first-time setup.
+  # Re-assert the zsh login shell after the Steam/Wine installs above (see
+  # common.yml): keep the base's /etc/default/useradd (HOME=/var/home!) and only
+  # force SHELL, and make sure zsh stays listed in /etc/shells.
   - type: script
     snippets:
       - >-
-        grep -qxF /usr/bin/zsh /etc/shells ||
-        printf '%s\n' /usr/bin/zsh >> /etc/shells
+        sed -i 's|^SHELL=.*|SHELL=/usr/bin/zsh|' /etc/default/useradd 2>/dev/null || true;
+        grep -q '^SHELL=' /etc/default/useradd || printf 'SHELL=/usr/bin/zsh\n' >> /etc/default/useradd;
+        grep -qxF /usr/bin/zsh /etc/shells 2>/dev/null || printf '/usr/bin/zsh\n' >> /etc/shells
 
   # Must stay last.
   - type: signing

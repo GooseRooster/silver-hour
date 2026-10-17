@@ -184,14 +184,21 @@ modules:
   - from-file: common-updates.yml
   - from-file: common-userland.yml
 
-  # --- Login shell sanity -------------------------------------------------
-  # AccountsService treats an account whose login shell is not listed in
-  # /etc/shells as a system account and GDM then refuses to show/start it,
-  # which breaks first-time setup. Package transactions can rewrite /etc/shells
-  # from the `setup` package default (sh/bash only), so re-assert zsh as the
-  # last common step; gaming.yml repeats this after its own installs.
+  # --- Login shell setup --------------------------------------------------
+  # Point useradd at zsh by editing Fedora Atomic's /etc/default/useradd in
+  # place, NOT by shipping a replacement file. Atomic sets HOME=/var/home (the
+  # target of the /home symlink, which does not exist until first use), so a
+  # hand-written file with HOME=/home makes `useradd -m` fail with E_HOMEDIR
+  # (exit 12), which aborts gnome-initial-setup. Only change SHELL and keep
+  # everything else.
+  #
+  # Also ensure zsh is in /etc/shells: AccountsService treats an account whose
+  # login shell is absent there as a system account, and GDM then refuses to
+  # show/start it. Both are re-asserted after all installs; gaming.yml repeats
+  # this after its own package installs.
   - type: script
     snippets:
       - >-
-        grep -qxF /usr/bin/zsh /etc/shells ||
-        printf '%s\n' /usr/bin/zsh >> /etc/shells
+        sed -i 's|^SHELL=.*|SHELL=/usr/bin/zsh|' /etc/default/useradd 2>/dev/null || true;
+        grep -q '^SHELL=' /etc/default/useradd || printf 'SHELL=/usr/bin/zsh\n' >> /etc/default/useradd;
+        grep -qxF /usr/bin/zsh /etc/shells 2>/dev/null || printf '/usr/bin/zsh\n' >> /etc/shells
