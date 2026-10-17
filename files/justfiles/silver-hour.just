@@ -1,4 +1,4 @@
-# silver-hour update helpers. Available via `ujust <recipe>`.
+# silver-hour update helpers. Available via `blujust <recipe>`.
 #
 # The two update recipes exist so the notification/tray path can be exercised in
 # the VM without waiting for the 15-minute timer.

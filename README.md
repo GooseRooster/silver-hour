@@ -140,6 +140,6 @@ just iso workstation   # build the offline ISO from a published image
 Home Manager is applied per user against the dotfiles repo; the image ships
 system-wide Nix with a persistent store and Homebrew, and seeds a default
 `topgrade` configuration. `silver-hour-topgrade` runs topgrade in a login shell
-so Homebrew is on `PATH`. Run `ujust --list` for the update helpers
+so Homebrew is on `PATH`. Run `blujust` to list the update helpers
 (`silver-hour-update-status`, `silver-hour-test-update`,
 `silver-hour-clear-update`).

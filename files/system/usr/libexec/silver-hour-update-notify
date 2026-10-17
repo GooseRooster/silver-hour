@@ -1,11 +1,14 @@
 #!/usr/bin/bash
-# Notify the user when a silver-hour system update has been staged.
+# Notify the user when a silver-hour system update has been *staged*.
 #
 # Runs from the per-user silver-hour-update-notify.timer. It reads the
 # world-readable status file written by silver-hour-update-status.service (which
 # runs as root) and sends a desktop notification the first time it sees a new
 # staged deployment digest. The last-seen digest is kept per user so the
 # notification is not repeated.
+#
+# A merely-available update (upstream is newer, nothing downloaded yet) is
+# surfaced only by the tray indicator, not by a notification.
 set -euo pipefail
 
 STATUS="/run/silver-hour/update-status.json"
@@ -13,6 +16,9 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/silver-hour"
 LAST_FILE="$STATE_DIR/update-notify.staged"
 
 [ -r "$STATUS" ] || exit 0
+
+staged="$(jq -r '.staged // false' "$STATUS" 2>/dev/null || echo false)"
+[ "$staged" = "true" ] || exit 0
 
 current="$(jq -r '.stagedDigest // empty' "$STATUS" 2>/dev/null || true)"
 [ -n "$current" ] || exit 0

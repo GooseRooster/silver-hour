@@ -10,3 +10,7 @@ cosign.private
 result
 result-*
 /.bluebuild-scripts_*
+
+# Python bytecode
+__pycache__/
+*.pyc

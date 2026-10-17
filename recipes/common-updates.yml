@@ -46,7 +46,7 @@ modules:
         /usr/libexec/silver-hour-update-indicator
         /usr/bin/silver-hour-topgrade
 
-  # `ujust` update helpers for exercising the notification/tray path without
+  # `blujust` update helpers for exercising the notification/tray path without
   # waiting for the timer.
   - type: justfiles
     validate: true

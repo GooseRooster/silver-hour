@@ -3,8 +3,13 @@
 #
 # An AppIndicator/KStatusNotifierItem (shown by the appindicator GNOME Shell
 # extension) that reflects the bootc update status written by
-# silver-hour-update-status.service. It gives the "updates ready — restart to
+# silver-hour-update-status.service. It gives the "update available / ready to
 # apply" state a persistent, GNOME-native home in the status tray.
+#
+# The icon changes so the state is visible at a glance:
+#   * up to date -> a checkmark
+#   * available  -> the "update available" icon
+#   * staged     -> the "urgent update" icon, with the indicator attention state
 import json
 import subprocess
 
@@ -25,6 +30,10 @@ STATUS_FILE = "/run/silver-hour/update-status.json"
 POLL_SECONDS = 20
 APP_ID = "silver-hour-update"
 
+ICON_STAGED = "software-update-urgent-symbolic"
+ICON_AVAILABLE = "software-update-available-symbolic"
+ICON_CURRENT = "object-select-symbolic"
+
 
 def read_status():
     try:
@@ -38,7 +47,7 @@ class Indicator:
     def __init__(self):
         self.indicator = AppIndicator.Indicator.new(
             APP_ID,
-            "software-update-available-symbolic",
+            ICON_CURRENT,
             AppIndicator.IndicatorCategory.SYSTEM_SERVICES,
         )
         self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
@@ -86,15 +95,19 @@ class Indicator:
         version = status.get("stagedVersion") or ""
 
         if staged:
-            icon = "software-update-urgent-symbolic"
+            icon = ICON_STAGED
             label = f"Update {version} ready — restart to apply".replace("  ", " ")
+            state = AppIndicator.IndicatorStatus.ATTENTION
         elif available:
-            icon = "software-update-available-symbolic"
+            icon = ICON_AVAILABLE
             label = "Update available — run topgrade"
+            state = AppIndicator.IndicatorStatus.ACTIVE
         else:
-            icon = "software-update-available-symbolic"
+            icon = ICON_CURRENT
             label = "silver-hour is up to date"
+            state = AppIndicator.IndicatorStatus.ACTIVE
 
+        self.indicator.set_status(state)
         self.indicator.set_icon_full(icon, label)
         self.item_status.set_label(label)
         self.item_restart.set_visible(staged)
