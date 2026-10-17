@@ -1,0 +1,64 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# Developer baseline: tools that should exist on first login, before Home
+# Manager / Nix / Homebrew run, plus the editor. Language toolchains and
+# version-sensitive runtimes deliberately stay in the user layer (Nix,
+# Homebrew, or a distrobox).
+#
+# Already provided by the base and therefore not listed here: just, fzf,
+# distrobox, tmux, htop, vim, podman, toolbox.
+modules:
+  # --- VS Code (official Microsoft build) --------------------------------
+  # Native host integration with none of the Flatpak sandbox friction. The
+  # Microsoft repo is used only at build time and removed again afterwards, so
+  # it is not left enabled in the image; updates arrive with image rebuilds.
+  # Telemetry and background updates are disabled via /etc/vscode/policy.json.
+  - type: dnf
+    repos:
+      cleanup: true
+      files:
+        - microsoft-vscode.repo
+      keys:
+        - https://packages.microsoft.com/keys/microsoft.asc
+    install:
+      packages:
+        - code
+
+  # --- Developer CLI baseline --------------------------------------------
+  - type: dnf
+    install:
+      packages:
+        # project env + task layer
+        - direnv
+        - zoxide
+        # git extensions
+        - git-lfs
+        - git-delta
+        # structured data, benchmarking, code stats
+        - yq
+        - hyperfine
+        - tokei
+        # files + transfer
+        - tree
+        - rsync
+        - wget
+        # process/system debugging
+        - lsof
+        - strace
+        # python tooling
+        - pipx
+        - uv
+        # networking
+        - httpie
+        - bind-utils
+        - mtr
+        - nmap
+        - nmap-ncat
+        - socat
+        # databases
+        - sqlite
+        # container tooling not already provided by the base
+        - buildah
+        - skopeo
+        - podman-compose

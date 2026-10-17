@@ -21,6 +21,11 @@ It ships in two flavours sharing one base:
   removed and Nautilus gets a "Terminal" context entry.
 - **Bazaar** as the app store (GNOME Software removed), with the Bazaar
   companion extension for "App Details"/"Uninstall" integration.
+- **VS Code** (official Microsoft build) plus a curated developer CLI baseline
+  (`direnv`, `zoxide`, `git-lfs`, `git-delta`, `yq`, `hyperfine`, `tokei`,
+  `pipx`, `uv`, `httpie`, `sqlite`, container tooling). Telemetry and background
+  updates are disabled; language toolchains deliberately stay in
+  Nix/Homebrew/a distrobox.
 - **GPU Screen Recorder** for screenshots and recording, with a small GNOME
   Shell extension providing interactive region selection so the GPU path is
   preserved.

@@ -97,6 +97,7 @@ modules:
 
   # --- Flavour includes --------------------------------------------------
   - from-file: common-system.yml
+  - from-file: common-devtools.yml
   - from-file: common-desktop.yml
   - from-file: common-updates.yml
   - from-file: common-userland.yml
