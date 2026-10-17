@@ -34,11 +34,7 @@ modules:
         # Ghostty replaces the stock terminals; GNOME Software is replaced by
         # Bazaar.
         - ptyxis
-        - gnome-terminal
-        - gnome-terminal-nautilus
-        - gnome-console
         - gnome-software
-        - gnome-software-rpm-ostree
 
   # --- Bazaar companion extension ----------------------------------------
   # Not on extensions.gnome.org; fetched from a pinned upstream revision and
