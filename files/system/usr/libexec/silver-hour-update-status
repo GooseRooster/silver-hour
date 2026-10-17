@@ -6,11 +6,13 @@
 # silver-hour-update-status.service and writes a world-readable JSON file to
 # /run/silver-hour/update-status.json.
 #
-# `bootc status` only knows about a `staged` deployment and a `cachedUpdate`
-# (an update that was already *downloaded*); `bootc upgrade --check` fetches
-# metadata but does not populate either, so it cannot be used to answer "is a
-# newer image available upstream?". Instead this compares the booted image
-# digest against the current registry digest of the source image (via skopeo).
+# `bootc upgrade --check` fetches the upstream manifest (metadata only) and, when
+# a newer image exists, records it as `cachedUpdate` on the booted deployment.
+# Both `booted.imageDigest` and `cachedUpdate.imageDigest` are platform-manifest
+# digests from bootc, so they can be compared directly. (Do not compare them
+# against `skopeo inspect --format '{{.Digest}}'`: for a multi-manifest image
+# that reports the *manifest-list/index* digest, a different object that never
+# matches the platform digest bootc stores.)
 #
 # Output schema:
 #   staged           bool   a deployment is queued for the next boot
@@ -18,8 +20,8 @@
 #   stagedDigest     string | null
 #   bootedVersion    string | null
 #   bootedDigest     string | null
-#   availableDigest  string | null  digest of the newer image (staged/cached/remote)
-#   updateAvailable  bool   a newer image exists upstream, is cached, or is staged
+#   availableDigest  string | null  digest of the cached newer image (not staged)
+#   updateAvailable  bool   a newer image is cached by bootc or is staged
 #   checkedAt        int    unix seconds
 set -euo pipefail
 
@@ -29,23 +31,13 @@ STATUS_TMP="$(mktemp)"
 cleanup() { rm -f "$STATUS_TMP"; }
 trap cleanup EXIT
 
-# Refresh cached upstream metadata (metadata only; safe to run in a timer).
+# Refresh the upstream manifest (metadata only; safe to run in a timer). When a
+# newer image exists bootc records it as `booted.cachedUpdate`; when there is
+# nothing new it leaves the field null.
 bootc upgrade --check >/dev/null 2>&1 || true
 
 if ! bootc status --json --format-version=1 >"$STATUS_TMP" 2>/dev/null; then
   exit 0
-fi
-
-# Resolve the source image reference and its current registry digest. This
-# catches an update that exists upstream but has not been downloaded yet, which
-# `bootc status` alone does not report. Best-effort: offline/private images just
-# yield no remote digest and we fall back to staged/cached detection.
-image_ref="$(jq -r '.status.booted.image.image.image // empty' "$STATUS_TMP")"
-booted_digest="$(jq -r '.status.booted.image.imageDigest // empty' "$STATUS_TMP")"
-remote_digest=""
-if [ -n "$image_ref" ] && command -v skopeo >/dev/null 2>&1; then
-  remote_digest="$(skopeo inspect --no-tags --format '{{.Digest}}' \
-    "docker://${image_ref}" 2>/dev/null || true)"
 fi
 
 mkdir -p /run/silver-hour
@@ -55,24 +47,27 @@ tmp_out="$(mktemp "/run/silver-hour/.update-status.XXXXXX")"
 # (ImageStatus), which carries `version`/`imageDigest` directly; `cachedUpdate`
 # is an ImageStatus too. All optional access uses `?` so an unexpected shape
 # yields null rather than aborting the service.
-jq -c \
-  --arg remoteDigest "$remote_digest" \
-  '
+#
+# A cached update only counts as available when its digest differs from the
+# booted image. `bootc upgrade --check` can leave a cached entry whose digest
+# equals the booted one, and bootc's own renderer hides those for the same
+# reason.
+jq -c '
   (.status.staged != null) as $staged
   | (.status.staged.image.version? // null) as $stagedVersion
   | (.status.staged.image.imageDigest? // null) as $stagedDigest
   | (.status.booted.image.version? // null) as $bootedVersion
   | (.status.booted.image.imageDigest? // null) as $bootedDigest
   | (.status.booted.cachedUpdate.imageDigest? // .status.booted.cachedUpdate.image?.imageDigest? // null) as $cachedDigest
-  | ($remoteDigest != "" and $bootedDigest != "" and $remoteDigest != $bootedDigest) as $remoteNewer
+  | (($cachedDigest != null) and ($cachedDigest != $bootedDigest)) as $cachedNewer
   | {
       staged: $staged,
       stagedVersion: $stagedVersion,
       stagedDigest: $stagedDigest,
       bootedVersion: $bootedVersion,
       bootedDigest: $bootedDigest,
-      availableDigest: (if $cachedDigest != null then $cachedDigest elif $remoteNewer then $remoteDigest else null end),
-      updateAvailable: ($staged or $cachedDigest != null or $remoteNewer),
+      availableDigest: (if $cachedNewer then $cachedDigest else null end),
+      updateAvailable: ($staged or $cachedNewer),
       checkedAt: (now | floor)
     }
   ' "$STATUS_TMP" >"$tmp_out"
