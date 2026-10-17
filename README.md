@@ -10,7 +10,7 @@ It ships in two flavours sharing one base:
 | Flavour | Image | What it is |
 | --- | --- | --- |
 | **workstation** | `ghcr.io/gooserooster/silver-hour-workstation` | Daily-driver GNOME desktop with Ghostty, Bazaar and the Nix/Home Manager/Homebrew userland. |
-| **gaming** | `ghcr.io/gooserooster/silver-hour-gaming` | Everything in workstation plus Steam, Wine/Faugus, a TuneD latency profile and GPU Screen Recorder tuned for gaming. |
+| **gaming** | `ghcr.io/gooserooster/silver-hour-gaming` | Everything in workstation plus Steam, Wine/Faugus, MangoHud/Gamescope, ProtonPlus/Protontricks, a TuneD latency profile and GPU Screen Recorder tuned for gaming. |
 
 ## What's inside
 
@@ -44,10 +44,38 @@ It ships in two flavours sharing one base:
 
 - Native **Steam** (Adwaita-for-Steam skinned), **Wine** + winetricks and
   **Faugus Launcher**.
+- **ProtonPlus** (compatibility-tool manager) and **Protontricks** as system
+  Flatpaks, alongside a curated general-purpose set of gaming utilities:
+  **MangoHud** (with a shipped default `MangoHud.conf`), **Gamescope**,
+  **steam-devices** (controller udev rules) and **vulkan-tools**.
 - A `game-performance` helper that switches to a latency power profile and
   inhibits idle while a game runs.
 - The gaming flavour maps the power-profiles-daemon `performance` profile to
   TuneD's `latency-performance`.
+
+#### Gaming notes
+
+- **MangoHud**: launch a game with `mangohud %command%` (or `MANGOHUD=1
+  %command%`) in Steam, or tick MangoHud in Faugus. Toggle the overlay in-game
+  with `RightShift+F12`. The shipped default lives at
+  `/usr/share/MangoHud/MangoHud.conf`; copy it to
+  `~/.config/MangoHud/MangoHud.conf` to customise.
+- **Protontricks** runs inside a Flatpak sandbox. Steam libraries in the
+  default locations (`~/.local/share/Steam`, `~/.steam`) are already
+  accessible. For a library on another drive or a non-standard path, grant it
+  once with:
+
+  ```sh
+  flatpak override --user --filesystem=/path/to/SteamLibrary \
+    com.github.Matoking.protontricks
+  ```
+
+- **xone** (the out-of-tree Xbox wireless-adapter driver) is deliberately
+  **not** included: it is a kernel module, and this image cannot sign it with
+  the Secure Boot MOK key the base image uses, so it would fail to load with
+  Secure Boot enabled. In-kernel `xpad` already covers wired and Bluetooth Xbox
+  controllers. If you need xone, disable Secure Boot (or enrol your own MOK
+  key) and layer it yourself.
 
 ## Installation
 

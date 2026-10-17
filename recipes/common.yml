@@ -66,9 +66,14 @@ modules:
   # rewritten beta (org.gnome.Boxes, from Flathub, is deliberately not
   # installed). The nightly remote is added system-wide so the app stays
   # updatable; note this is unstable upstream code and VM data loss is possible.
+  #
+  # notify: false everywhere: the module's setup scripts send a desktop
+  # notification per configuration on *every* boot (the user script even
+  # announces an empty list as "0 user Flatpak(s)"), so notifications are
+  # disabled to keep boot quiet.
   - type: default-flatpaks
     configurations:
-      - notify: true
+      - notify: false
         scope: system
         install:
           - io.mpv.Mpv
@@ -108,7 +113,7 @@ modules:
       # GNOME Nightly: the rewritten Boxes beta (different app ID from the
       # stable org.gnome.Boxes, so the two can coexist; only the beta is
       # installed here).
-      - notify: true
+      - notify: false
         scope: system
         repo:
           url: https://nightly.gnome.org/gnome-nightly.flatpakrepo
@@ -116,7 +121,11 @@ modules:
           title: GNOME Nightly
         install:
           - org.gnome.Boxes.Devel
-      - scope: user
+      # Add the per-user Flathub remote (no user packages). notify must be set
+      # explicitly: it defaults to true and would otherwise pop "0 user
+      # Flatpak(s)" on every login.
+      - notify: false
+        scope: user
 
   # --- Tuned system daemons ----------------------------------------------
   # ananicy-cpp: eBPF auto-nice daemon keeping the desktop responsive while

@@ -2,8 +2,9 @@
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 name: silver-hour-gaming
 description: >-
-  silver-hour gaming — the workstation flavour plus Steam, Wine/Faugus, a TuneD
-  latency profile, ananicy-cpp and GPU Screen Recorder.
+  silver-hour gaming — the workstation flavour plus Steam, Wine/Faugus,
+  MangoHud, Gamescope, ProtonPlus/Protontricks, a TuneD latency profile,
+  ananicy-cpp and GPU Screen Recorder.
 base-image: ghcr.io/blue-build/base-images/fedora-silverblue
 image-version: latest
 
@@ -22,6 +23,33 @@ modules:
         - wine
         - winetricks
         - faugus-launcher
+
+  # --- General-purpose gaming utilities ----------------------------------
+  # All from the Fedora repos (no extra remote). MangoHud covers native Steam
+  # and Faugus; the i686 build covers 32-bit games. Gamescope provides the
+  # micro-compositor (FSR, fps limiting, HDR); steam-devices ships the udev
+  # rules for Steam/console controllers; vulkan-tools adds vulkaninfo.
+  - type: dnf
+    install:
+      packages:
+        - mangohud
+        - mangohud.i686
+        - gamescope
+        - steam-devices
+        - vulkan-tools
+
+  # --- Gaming Flatpaks: ProtonPlus + Protontricks ------------------------
+  # System Flatpaks so they exist before first login. ProtonPlus manages
+  # Proton/Wine/DXVK/VKD3D runners for Steam and Faugus; Protontricks runs
+  # winetricks inside existing Proton prefixes. notify is off to keep boot
+  # quiet (see common.yml).
+  - type: default-flatpaks
+    configurations:
+      - notify: false
+        scope: system
+        install:
+          - com.vysp3r.ProtonPlus
+          - com.github.Matoking.protontricks
 
   # --- Steam (negativo17) ------------------------------------------------
   # The base is built on negativo17 and leaves its enabling drop-in in place;
