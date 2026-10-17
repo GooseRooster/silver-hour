@@ -5,7 +5,25 @@
 # default config enables the bootc, Flatpak and Homebrew steps; users can
 # override it in ~/.config/topgrade.toml. After it finishes, if a deployment is
 # staged, point the user at a restart.
+#
+# topgrade elevates with `sudo -v` for the bootc and system-Flatpak steps, and
+# sudo needs a controlling terminal to prompt for a password. The tray
+# indicator (and anything else without a TTY) therefore re-execs into the
+# default terminal so the user can authenticate and watch the run; when already
+# in a terminal it runs in place.
 set -uo pipefail
+
+if [ ! -t 1 ] && [ -z "${SILVER_HOUR_TOPDGRADE:-}" ]; then
+  export SILVER_HOUR_TOPDGRADE=1
+  if [ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ] \
+    && command -v xdg-terminal-exec >/dev/null 2>&1; then
+    exec xdg-terminal-exec --hold --title="silver-hour updates" \
+      /usr/bin/silver-hour-topgrade
+  fi
+fi
+
+# topgrade's breaking-change notice reads stdin; never let it block the run.
+export TOPGRADE_SKIP_BRKC_NOTIFY=true
 
 ZSH="$(command -v zsh || true)"
 if [ -n "$ZSH" ]; then

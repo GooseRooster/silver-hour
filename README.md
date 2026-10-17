@@ -135,6 +135,21 @@ just build-root workstation && just disk workstation && just vm-disk workstation
 just iso workstation   # build the offline ISO from a published image
 ```
 
+## Known messages
+
+### `mount: (hint) your fstab has been modified…`
+
+This line can appear (sometimes on every boot) on bootc/composefs systems. It
+comes from util-linux's `mount`: it is printed when `/etc/fstab` is newer than
+systemd's loaded-unit snapshot (`/run/systemd/systemd-units-load`). During early
+boot the base image's bootc generator runs `bootc-fstab-edit.service`, which
+adds `ro` to the `/` entry in `/etc/fstab` so `systemd-remount-fs` matches the
+read-only composefs root. That edit happens after systemd has already generated
+its unit tree, so any later `mount` call (podman, distrobox, flatpak, nix, …)
+prints the hint. The fstab change itself is correct and the message is
+harmless; it is being addressed upstream in bootc/anaconda/systemd. No action is
+needed.
+
 ## Userland
 
 Home Manager is applied per user against the dotfiles repo; the image ships

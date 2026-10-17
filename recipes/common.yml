@@ -60,7 +60,12 @@ modules:
   # --- Baseline Flatpaks -------------------------------------------------
   # The GNOME base image is minimal: it ships the shell, core libs, Nautilus,
   # Firefox, Disks and System Monitor, but not the GNOME apps. They are
-  # installed here as system Flatpaks.
+  # installed here as system Flatpaks from Flathub.
+  #
+  # Boxes is the exception: it is installed from the GNOME Nightly repo as the
+  # rewritten beta (org.gnome.Boxes, from Flathub, is deliberately not
+  # installed). The nightly remote is added system-wide so the app stays
+  # updatable; note this is unstable upstream code and VM data loss is possible.
   - type: default-flatpaks
     configurations:
       - notify: true
@@ -88,7 +93,6 @@ modules:
           - org.gnome.SimpleScan
           - org.gnome.Connections
           - org.gnome.Firmware
-          - org.gnome.Boxes
           - org.gnome.DejaDup
           - org.gnome.seahorse.Application
           - org.mozilla.thunderbird_esr
@@ -98,6 +102,20 @@ modules:
           - io.github.flattool.Warehouse
           - io.github.flattool.Ignition
           - it.mijorus.gearlever
+          # Distrobox management and a developer toolbox.
+          - com.ranfdev.DistroShelf
+          - me.iepure.devtoolbox
+      # GNOME Nightly: the rewritten Boxes beta (different app ID from the
+      # stable org.gnome.Boxes, so the two can coexist; only the beta is
+      # installed here).
+      - notify: true
+        scope: system
+        repo:
+          url: https://nightly.gnome.org/gnome-nightly.flatpakrepo
+          name: gnome-nightly
+          title: GNOME Nightly
+        install:
+          - org.gnome.Boxes.Devel
       - scope: user
 
   # --- Tuned system daemons ----------------------------------------------
