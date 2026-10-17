@@ -6,33 +6,22 @@
 # user unit silver-hour-steam-theme.service runs install.py once against the
 # user's Steam directory after its first launch.
 #
-# Fetches the latest upstream release at build time (with a branch fallback).
+# The release is pinned for reproducible builds; Renovate bumps TAG (see
+# renovate.json).
 set -euo pipefail
 
-FALLBACK_REF="master"
-API="https://api.github.com/repos/tkashkin/Adwaita-for-Steam/releases/latest"
+TAG="3.17"
 DEST="/usr/share/silver-hour/adwaita-for-steam"
-
-tag=""
-if command -v curl >/dev/null 2>&1; then
-  tag="$(curl -fsSL "$API" 2>/dev/null \
-    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' \
-    | head -n1 || true)"
-fi
-[ -n "$tag" ] || tag="$FALLBACK_REF"
-echo "adwaita-for-steam: staging ${tag}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-curl -fsSL "https://github.com/tkashkin/Adwaita-for-Steam/archive/refs/tags/${tag}.tar.gz" \
-  -o "$tmp/adwaita.tar.gz" \
-  || curl -fsSL "https://github.com/tkashkin/Adwaita-for-Steam/archive/refs/heads/${tag}.tar.gz" \
-    -o "$tmp/adwaita.tar.gz"
+curl -fsSL "https://github.com/tkashkin/Adwaita-for-Steam/archive/refs/tags/${TAG}.tar.gz" \
+  -o "$tmp/adwaita.tar.gz"
 
 tar -xzf "$tmp/adwaita.tar.gz" -C "$tmp"
 src="$(find "$tmp" -maxdepth 1 -type d -name 'Adwaita-for-Steam-*' | head -n1)"
-[ -n "$src" ] || { echo "adwaita-for-steam: source tree not found (${tag})" >&2; exit 1; }
+[ -n "$src" ] || { echo "adwaita-for-steam: source tree not found (${TAG})" >&2; exit 1; }
 
 mkdir -p "$DEST"
 cp -a "$src/." "$DEST/"

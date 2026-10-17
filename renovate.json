@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Bump the pinned bazaar-companion source revision",
+      "managerFilePatterns": [
+        "/^files/scripts/install-bazaar-companion\\.sh$/"
+      ],
+      "matchStrings": [
+        "REF=\"(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "currentValueTemplate": "main",
+      "depNameTemplate": "bazaar-companion",
+      "packageNameTemplate": "https://github.com/bazaar-org/bazaar-companion",
+      "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump the pinned Adwaita-for-Steam release",
+      "managerFilePatterns": [
+        "/^files/scripts/install-adwaita-for-steam\\.sh$/"
+      ],
+      "matchStrings": [
+        "TAG=\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "Adwaita-for-Steam",
+      "packageNameTemplate": "tkashkin/Adwaita-for-Steam",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}

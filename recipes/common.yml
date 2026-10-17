@@ -69,6 +69,8 @@ modules:
           - be.alexandervanhee.gradia
           - org.mozilla.thunderbird_esr
           - com.github.tchx84.Flatseal
+          - com.mattjakeman.ExtensionManager
+          - page.tesk.Refine
           - io.github.flattool.Warehouse
           - io.github.flattool.Ignition
           - it.mijorus.gearlever
@@ -94,6 +96,32 @@ modules:
         # Installer-created users start on bash; this idempotent oneshot sets
         # /usr/bin/zsh as their login shell before the display manager.
         - silver-hour-set-login-shell.service
+
+  # --- Branding ----------------------------------------------------------
+  # os-release is what `hostnamectl`, the GNOME About panel and other tools
+  # read. Keep ID/VERSION_ID untouched so Fedora tooling (dnf, COPRs) keeps
+  # working; only the human-facing fields are branded.
+  - type: os-release
+    properties:
+      NAME: Silver Hour
+      VARIANT: Silver Hour
+      VARIANT_ID: silver-hour
+      DEFAULT_HOSTNAME: silver-hour
+      HOME_URL: https://github.com/gooserooster/silver-hour
+      DOCUMENTATION_URL: https://github.com/gooserooster/silver-hour
+      SUPPORT_URL: https://github.com/gooserooster/silver-hour/issues
+      BUG_REPORT_URL: https://github.com/gooserooster/silver-hour/issues
+
+  # PRETTY_NAME/VERSION include the Fedora release number, which is only known
+  # at build time, so derive them from the base's VERSION_ID.
+  - type: script
+    snippets:
+      - >-
+        target="$(readlink -f /etc/os-release)";
+        ver="$(. "$target"; printf '%s' "${VERSION_ID}")";
+        sed -i
+        -e "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Fedora Atomic ${ver} (Silver Hour)\"|"
+        -e "s|^VERSION=.*|VERSION=\"${ver} (Silver Hour)\"|" "$target"
 
   # --- Flavour includes --------------------------------------------------
   - from-file: common-system.yml
