@@ -18,9 +18,11 @@ modules:
         # Terminal + screenshot/recording tooling.
         - ghostty
         - gpu-screen-recorder
-        # Default GNOME Shell extensions (AppIndicator tray) + Bazaar companion
-        # runtime + Nautilus extension runtime.
+        # Default GNOME Shell extensions (AppIndicator tray, Caffeine) + Bazaar
+        # companion runtime + Nautilus extension runtime. Caffeine is distro
+        # packaged; the Fedora build tracks the image's GNOME version.
         - gnome-shell-extension-appindicator
+        - gnome-shell-extension-caffeine
         - nautilus-python
         # Default-terminal plumbing and the tray indicator runtime.
         - xdg-terminal-exec
@@ -42,6 +44,15 @@ modules:
   - type: script
     scripts:
       - install-bazaar-companion.sh
+
+  # --- Clipboard Indicator extension -------------------------------------
+  # Installed system-wide from extensions.gnome.org; the module picks the
+  # newest release compatible with the image's GNOME version and compiles its
+  # schema. 779 is the PK id for Tudmotu's extension (the name "Clipboard
+  # Indicator" is shared with a different extension).
+  - type: gnome-extensions
+    install:
+      - 779
 
   # --- Re-apply image files after the RPM installs -----------------------
   # This runs after ghostty is installed so the "Terminal" desktop-entry

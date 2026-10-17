@@ -1,14 +1,15 @@
 #!/usr/bin/bash
 # game-performance — run a command under the gaming power profile.
 #
-# While the wrapped command runs it:
-#  * switches the power profile to `performance` (which TuneD maps to
-#    `latency-performance` via the gaming /etc/tuned/ppd.conf),
-#  * inhibits idle so the session does not sleep or lock,
-# and restores the previous profile on exit.
+# While the wrapped command runs it switches TuneD to `latency-performance`
+# and restores the previously active profile on exit. Idle/suspend inhibition
+# is left to the Caffeine Shell extension, which activates automatically while
+# a fullscreen application is running.
 #
-# The profile is driven through the power-profiles-daemon API (served by
-# tuned-ppd), falling back to tuned-adm if powerprofilesctl is unavailable.
+# Profiles are switched through tuned-adm. tuned-ppd only exposes the
+# power-profiles-daemon D-Bus API (there is no powerprofilesctl on this image),
+# and tuned-adm profile switching is authorised for the active local session
+# (polkit com.redhat.tuned.switch_profile, allow_active=yes).
 #
 # Usage: game-performance [--] <command> [args...]
 set -euo pipefail
@@ -19,50 +20,23 @@ usage() { echo "usage: game-performance [--] <command> [args...]" >&2; }
 [ "${1:-}" = "--" ] && shift
 [ "$#" -ge 1 ] || { usage; exit 2; }
 
+GAMING_PROFILE="latency-performance"
+
 NOTIFY="$(command -v notify-send || true)"
 notify() { [ -n "$NOTIFY" ] && "$NOTIFY" -a "Game performance" "$@" >/dev/null 2>&1 || true; }
 
-# ppd_set <power-saver|balanced|performance>.
-ppd_set() {
-  local ppd="$1"
-  if command -v powerprofilesctl >/dev/null 2>&1; then
-    powerprofilesctl set "$ppd" >/dev/null 2>&1 && return 0
-  fi
-  case "$ppd" in
-    performance) tuned-adm profile latency-performance ;;
-    power-saver) tuned-adm profile powersave ;;
-    *) tuned-adm profile balanced ;;
-  esac
-}
-
-tuned_to_ppd() {
-  case "$1" in
-    latency-performance | throughput-performance) echo performance ;;
-    powersave | powersave-*) echo power-saver ;;
-    *) echo balanced ;;
-  esac
-}
-
-saved_ppd="balanced"
-if command -v powerprofilesctl >/dev/null 2>&1; then
-  active="$(powerprofilesctl get 2>/dev/null || true)"
-  [ -n "$active" ] && saved_ppd="$active"
-elif command -v tuned-adm >/dev/null 2>&1; then
-  active="$(tuned-adm active 2>/dev/null | sed -n 's/^Current active profile: *//p' || true)"
-  [ -n "$active" ] && saved_ppd="$(tuned_to_ppd "$active")"
-fi
+# Save the active profile so it can be restored afterwards.
+saved_profile="$(tuned-adm active 2>/dev/null | sed -n 's/^Current active profile: *//p' || true)"
+[ -n "$saved_profile" ] || saved_profile="balanced"
 
 restore() {
   trap - EXIT
-  ppd_set "$saved_ppd"
-  notify "Restored profile: $saved_ppd"
+  tuned-adm profile "$saved_profile" >/dev/null 2>&1 || true
+  notify "Restored profile: $saved_profile"
 }
 trap restore EXIT
 
-ppd_set performance
+tuned-adm profile "$GAMING_PROFILE" >/dev/null 2>&1
 notify "Gaming mode: $*"
 
-# Block idle for the duration of the command; the EXIT trap restores the
-# profile afterwards.
-systemd-inhibit --what=idle \
-  --why="Game performance: $*" --mode=block "$@"
+"$@"

@@ -21,6 +21,9 @@ It ships in two flavours sharing one base:
   removed and Nautilus gets a "Terminal" context entry.
 - **Bazaar** as the app store (GNOME Software removed), with the Bazaar
   companion extension for "App Details"/"Uninstall" integration.
+- **Caffeine** and **Clipboard Indicator** as system Shell extensions:
+  Caffeine keeps the session awake (and activates automatically for fullscreen
+  apps), and Clipboard Indicator adds clipboard history to the top bar.
 - **VS Code** (official Microsoft build) plus a curated developer CLI baseline
   (`direnv`, `zoxide`, `git-lfs`, `git-delta`, `yq`, `hyperfine`, `tokei`,
   `pipx`, `uv`, `httpie`, `sqlite`, container tooling). Telemetry and background
@@ -48,8 +51,8 @@ It ships in two flavours sharing one base:
   Flatpaks, alongside a curated general-purpose set of gaming utilities:
   **MangoHud** (with a shipped default `MangoHud.conf`), **Gamescope**,
   **steam-devices** (controller udev rules) and **vulkan-tools**.
-- A `game-performance` helper that switches to a latency power profile and
-  inhibits idle while a game runs.
+- A `game-performance` helper that switches to a latency power profile while a
+  game runs; idle inhibition is handled by Caffeine for fullscreen apps.
 - The gaming flavour maps the power-profiles-daemon `performance` profile to
   TuneD's `latency-performance`.
 

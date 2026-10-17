@@ -7,10 +7,14 @@
 # GNOME Shell extensions enabled by default:
 #  * appindicator support  - the status tray used by silver-hour's update
 #                            indicator (and other tray apps).
+#  * Caffeine              - keeps the session awake, including automatically
+#                            for fullscreen apps (so game-performance need not
+#                            inhibit idle itself).
+#  * clipboard indicator   - clipboard history in the top bar.
 #  * Bazaar companion      - "App Details"/"Uninstall" and Flatpak actions open
 #                            in Bazaar instead of GNOME Software.
 #  * silver-hour GSR region - region selection for gpu-screen-recorder.
-enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'bazaar-integration@kolunmi.github.io', 'silver-hour-gsr-region@silver-hour']
+enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'caffeine@patapon.info', 'clipboard-indicator@tudmotu.com', 'bazaar-integration@kolunmi.github.io', 'silver-hour-gsr-region@silver-hour']
 favorite-apps=['com.mitchellh.ghostty.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'org.gnome.TextEditor.desktop', 'org.mozilla.firefox.desktop']
 
 # Ghostty is the default terminal. This key is deprecated upstream but is still
