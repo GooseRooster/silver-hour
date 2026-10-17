@@ -1,0 +1,14 @@
+# silver-hour default topgrade configuration.
+#
+# Seeded into each user's ~/.config/topgrade.d/00-silver-hour.toml and merged
+# before ~/.config/topgrade.toml, so a user's own config overrides everything
+# here. Defaults: stage a bootc OS update, update system + user Flatpaks, and
+# update Homebrew.
+
+# Use bootc (not dnf/rpm-ostree) for the OS step on this atomic image.
+[linux]
+bootc = true
+
+# Manage the system-wide Flatpak installation as well as the user one.
+[flatpak]
+use_sudo = true

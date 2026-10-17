@@ -1,0 +1,102 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# Shared modules for every silver-hour flavour.
+#
+# Flavour recipes pull this in first (`- from-file: common.yml`) and must end
+# with `- type: signing`. Everything shared lives here, so the gaming flavour
+# (common.yml + gaming modules) is a strict superset of workstation.
+modules:
+  # --- System files -------------------------------------------------------
+  # files/system/* is copied into the image root (/).
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  # --- Base CLI/system packages ------------------------------------------
+  # zsh is the login shell for every human user.
+  - type: dnf
+    install:
+      packages:
+        - git
+        - ppp
+        - playerctl
+        - cava
+        # shell + login-shell plumbing
+        - zsh
+        # file/text/search
+        - bat
+        - fd-find # binary: fd
+        - ripgrep
+        - eza
+        - yq
+        - less
+        # disk usage
+        - du-dust # Fedora binary name
+        - ncdu
+        # media / documents / images
+        - mediainfo
+        # terminal niceties
+        - chafa
+        - btop
+        - trash-cli
+        # general dev-ish utilities
+        - gh
+        - shellcheck
+        - shfmt
+
+  # --- Fonts -------------------------------------------------------------
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - FiraCode
+        - JetBrainsMono
+        - SourceCodePro
+        - NerdFontsSymbolsOnly
+        - Ubuntu
+        - Iosevka
+
+  # --- Baseline Flatpaks -------------------------------------------------
+  # Only apps that the GNOME base does not already provide as RPMs.
+  - type: default-flatpaks
+    configurations:
+      - notify: true
+        scope: system
+        install:
+          - io.mpv.Mpv
+          - io.github.kolunmi.Bazaar
+          - be.alexandervanhee.gradia
+          - org.mozilla.thunderbird_esr
+          - com.github.tchx84.Flatseal
+          - io.github.flattool.Warehouse
+          - io.github.flattool.Ignition
+          - it.mijorus.gearlever
+      - scope: user
+
+  # --- Tuned system daemons ----------------------------------------------
+  # ananicy-cpp: eBPF auto-nice daemon keeping the desktop responsive while
+  # builds and containers run.
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - bieszczaders/kernel-cachyos-addons
+    install:
+      packages:
+        - ananicy-cpp
+        - cachyos-ananicy-rules
+
+  - type: systemd
+    system:
+      enabled:
+        - ananicy-cpp.service
+        # Installer-created users start on bash; this idempotent oneshot sets
+        # /usr/bin/zsh as their login shell before the display manager.
+        - silver-hour-set-login-shell.service
+
+  # --- Flavour includes --------------------------------------------------
+  - from-file: common-system.yml
+  - from-file: common-desktop.yml
+  - from-file: common-updates.yml
+  - from-file: common-userland.yml

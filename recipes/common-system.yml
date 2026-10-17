@@ -1,0 +1,50 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# Baseline system packages and tunables shared by both flavours.
+modules:
+  # Power management: TuneD plus tuned-ppd, which exposes the
+  # power-profiles-daemon (PPD) D-Bus API on top of TuneD — this is what the
+  # GNOME power panel and the game-performance helper talk to.
+  - type: dnf
+    install:
+      packages:
+        - btrfsmaintenance
+        - tuned
+        - tuned-ppd
+
+  - type: systemd
+    system:
+      enabled:
+        - btrfs-scrub.timer
+        - tuned.service
+        - tuned-ppd.service
+
+  # --- System browser: Zen -------------------------------------------------
+  # Zen is a system resource (installed system-wide from the sneexy/zen-browser
+  # COPR), not part of the per-user layer. Its policies.json lives under
+  # /opt/zen, which the files module cannot write (bootc symlinks /opt), so it
+  # is patched in place after the install. COPR cleaned up after use.
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - sneexy/zen-browser
+    install:
+      packages:
+        - zen-browser
+
+  - type: script
+    snippets:
+      - >-
+        if [ -f /opt/zen/distribution/policies.json ];
+        then install -m0644 /usr/share/silver-hour/zen-policies.json /opt/zen/distribution/policies.json;
+        fi
+
+  # tuned-ppd ships its own /etc/tuned/ppd.conf; re-apply files/system so the
+  # shared mapping wins over the RPM default (and so the Zen policy source is
+  # in place).
+  - type: files
+    files:
+      - source: system
+        destination: /

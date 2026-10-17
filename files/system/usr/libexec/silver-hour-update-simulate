@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+# Dev/VM helper: write a fake staged-update status file.
+#
+# Lets you exercise the update notification, the tray indicator, and the
+# staged-update flow without waiting for (or being able to fetch) a real bootc
+# update. Run as root via `ujust silver-hour-test-update`. The digest is unique
+# per invocation, so the notifier treats each call as a new staged deployment.
+set -euo pipefail
+
+version="${1:-test-1.0}"
+out="/run/silver-hour/update-status.json"
+
+mkdir -p /run/silver-hour
+tmp="$(mktemp)"
+now="$(date +%s)"
+
+jq -n \
+  --arg version "$version" \
+  --arg digest "sha256:test-${now}" \
+  --argjson checkedAt "$now" \
+  '{
+     staged: true,
+     stagedVersion: $version,
+     stagedDigest: $digest,
+     bootedVersion: "test-0.9",
+     bootedDigest: "sha256:booted",
+     updateAvailable: true,
+     checkedAt: $checkedAt
+   }' >"$tmp"
+
+chmod 0644 "$tmp"
+mv -f "$tmp" "$out"
+echo "silver-hour: wrote simulated staged status to $out"

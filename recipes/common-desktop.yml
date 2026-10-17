@@ -1,0 +1,79 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# GNOME desktop layer. The base already provides the full GNOME session, so
+# this layer only makes silver-hour's deliberate changes: Ghostty as the
+# default terminal, Bazaar instead of GNOME Software, GPU Screen Recorder, and
+# the shell extensions that ship enabled by default.
+modules:
+  # --- Package installs and removals -------------------------------------
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - scottames/ghostty
+        - brycensranch/gpu-screen-recorder-git
+    install:
+      packages:
+        # Terminal + screenshot/recording tooling.
+        - ghostty
+        - gpu-screen-recorder
+        # Default GNOME Shell extensions (AppIndicator tray) + Bazaar companion
+        # runtime + Nautilus extension runtime.
+        - gnome-shell-extension-appindicator
+        - nautilus-python
+        # Default-terminal plumbing and the tray indicator runtime.
+        - xdg-terminal-exec
+        - libayatana-appindicator-gtk3
+        - python3-gobject
+        - desktop-file-utils
+        - unzip
+        - curl
+    remove:
+      packages:
+        # Ghostty replaces the stock terminals; GNOME Software is replaced by
+        # Bazaar.
+        - ptyxis
+        - gnome-terminal
+        - gnome-terminal-nautilus
+        - gnome-console
+        - gnome-software
+        - gnome-software-rpm-ostree
+
+  # --- Bazaar companion extension ----------------------------------------
+  # Not on extensions.gnome.org; fetched from a pinned upstream revision and
+  # installed system-wide.
+  - type: script
+    scripts:
+      - install-bazaar-companion.sh
+
+  # --- Re-apply image files after the RPM installs -----------------------
+  # This runs after ghostty is installed so the "Terminal" desktop-entry
+  # override wins over the package's own file, and after the removals so the
+  # default-terminal and dconf defaults are the ones that ship.
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  - type: systemd
+    user:
+      enabled:
+        # Persistent "updates ready" tray indicator.
+        - silver-hour-update-indicator.service
+
+  # --- Fix executable bits and refresh caches ----------------------------
+  - type: script
+    snippets:
+      - >-
+        chmod 0755
+        /usr/bin/termapp
+        /usr/bin/gsr-shot
+        /usr/bin/gsr-rec
+        /usr/share/nautilus-python/extensions/silver-hour-ghostty.py
+      # Compile the system dconf database from /etc/dconf/db/local.d.
+      - dconf update
+      - >-
+        update-desktop-database /usr/share/applications 2>/dev/null || true
+      - >-
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true

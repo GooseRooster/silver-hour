@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically record silver-hour bootc update status
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

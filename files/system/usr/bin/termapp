@@ -1,0 +1,14 @@
+#!/usr/bin/bash
+# Launch a terminal app in the default terminal (Ghostty) with zsh's login
+# environment bootstrapped.
+#
+# Ghostty's positional command replaces the configured shell, so a bare
+# `ghostty nvim` would skip shell init; wrapping in `zsh -l -c` restores login
+# env. `-e` is accepted for xterm compatibility, so `termapp -e nvim` works too.
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+  exec /usr/bin/ghostty
+fi
+
+exec /usr/bin/ghostty -e /usr/bin/zsh -l -c "$*"

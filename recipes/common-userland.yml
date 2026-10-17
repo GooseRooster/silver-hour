@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# The userland layer: system-wide Nix with a persistent store (common-nix.yml)
+# plus Homebrew, shared by both flavours.
+modules:
+  # System-wide Nix with a persistent /nix (backed by /var/nix).
+  - from-file: common-nix.yml
+
+  # Homebrew: installs Linuxbrew to /home/linuxbrew/.linuxbrew at runtime and
+  # enables the brew-update/brew-upgrade timers.
+  - type: brew
+    brew-analytics: false

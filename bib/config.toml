@@ -1,0 +1,9 @@
+# Local-test only: bootc-image-builder injects this throwaway account so you
+# can log straight into GNOME without running the installer. Real accounts are
+# created by the graphical installer; this file is only consumed by `just disk`
+# and must not be shipped.
+
+[[customizations.user]]
+name = "silverhour"
+password = "silverhour"
+groups = ["wheel"]

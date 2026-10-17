@@ -1,0 +1,9 @@
+[Unit]
+Description=Record silver-hour bootc update status
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/run/ostree-booted
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/silver-hour-update-status

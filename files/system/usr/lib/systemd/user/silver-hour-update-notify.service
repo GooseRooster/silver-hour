@@ -1,0 +1,7 @@
+[Unit]
+Description=Notify when a silver-hour system update is staged
+ConditionPathExists=/run/silver-hour/update-status.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/silver-hour-update-notify

@@ -1,0 +1,55 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# System updater layer: topgrade, the bootc update-status service, the per-user
+# notification service, and the GNOME tray indicator.
+modules:
+  # topgrade is the manual updater; jq is used by the update-status/notify
+  # scripts and the silver-hour-topgrade wrapper. The COPR is cleaned up after
+  # install.
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - lilay/topgrade
+    install:
+      packages:
+        - jq
+        - topgrade
+
+  # Ship the topgrade default config, the update-status/notify/indicator
+  # scripts and units. Re-applied after the RPMs so the shipped files win.
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  - type: systemd
+    system:
+      enabled:
+        # Detects staged / available bootc updates (needs root: `bootc status`
+        # refuses unprivileged users) and writes
+        # /run/silver-hour/update-status.json.
+        - silver-hour-update-status.timer
+    user:
+      enabled:
+        # Watches the status file and notifies on a staged update.
+        - silver-hour-update-notify.timer
+
+  - type: script
+    snippets:
+      - >-
+        chmod 0755
+        /usr/libexec/silver-hour-update-status
+        /usr/libexec/silver-hour-update-notify
+        /usr/libexec/silver-hour-update-simulate
+        /usr/libexec/silver-hour-update-indicator
+        /usr/bin/silver-hour-topgrade
+
+  # `ujust` update helpers for exercising the notification/tray path without
+  # waiting for the timer.
+  - type: justfiles
+    validate: true
+    install: true
+    include:
+      - silver-hour.just

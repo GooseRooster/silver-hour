@@ -1,0 +1,21 @@
+# System defaults for silver-hour.
+#
+# Read through /etc/dconf/profile/user (system-db:local) on every login. These
+# are defaults only and remain user-overridable.
+
+[org/gnome/shell]
+# GNOME Shell extensions enabled by default:
+#  * appindicator support  - the status tray used by silver-hour's update
+#                            indicator (and other tray apps).
+#  * Bazaar companion      - "App Details"/"Uninstall" and Flatpak actions open
+#                            in Bazaar instead of GNOME Software.
+#  * silver-hour GSR region - region selection for gpu-screen-recorder.
+enabled-extensions=['appindicatorsupport@rgcjonas.gmail.com', 'bazaar-integration@kolunmi.github.io', 'silver-hour-gsr-region@silver-hour']
+favorite-apps=['com.mitchellh.ghostty.desktop', 'org.gnome.Nautilus.desktop', 'io.github.kolunmi.Bazaar.desktop', 'org.gnome.TextEditor.desktop', 'org.mozilla.firefox.desktop']
+
+# Ghostty is the default terminal. This key is deprecated upstream but is still
+# consumed by some launchers; the primary mechanism is xdg-terminal-exec (see
+# /etc/xdg/xdg-terminals.list).
+[org/gnome/desktop/default-applications/terminal]
+exec='ghostty'
+exec-arg=''

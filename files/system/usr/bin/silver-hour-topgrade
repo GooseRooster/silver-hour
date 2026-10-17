@@ -1,0 +1,21 @@
+#!/usr/bin/bash
+# silver-hour manual updater entry point.
+#
+# Runs topgrade in a login shell so Homebrew's shellenv is on PATH. topgrade's
+# default config enables the bootc, Flatpak and Homebrew steps; users can
+# override it in ~/.config/topgrade.toml. After it finishes, if a deployment is
+# staged, point the user at a restart.
+set -uo pipefail
+
+ZSH="$(command -v zsh || true)"
+if [ -n "$ZSH" ]; then
+  "$ZSH" -l -c topgrade
+else
+  topgrade
+fi
+
+if [ -r /run/silver-hour/update-status.json ] \
+  && jq -e '.staged == true' /run/silver-hour/update-status.json >/dev/null 2>&1; then
+  notify-send -u normal -a "silver-hour" -i system-software-update \
+    "Updates ready to install" "Restart to apply the staged update." >/dev/null 2>&1 || true
+fi

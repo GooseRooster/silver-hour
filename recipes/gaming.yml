@@ -1,0 +1,62 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+name: silver-hour-gaming
+description: >-
+  silver-hour gaming — the workstation flavour plus Steam, Wine/Faugus, a TuneD
+  latency profile, ananicy-cpp and GPU Screen Recorder.
+base-image: ghcr.io/blue-build/base-images/fedora-silverblue
+image-version: latest
+
+modules:
+  # The shared base (same as the workstation flavour).
+  - from-file: common.yml
+
+  # --- Wine stack + Faugus Launcher --------------------------------------
+  - type: dnf
+    repos:
+      cleanup: true
+      copr:
+        - faugus/faugus-launcher
+    install:
+      packages:
+        - wine
+        - winetricks
+        - faugus-launcher
+
+  # --- Steam (negativo17) ------------------------------------------------
+  # The base is built on negativo17 and leaves its enabling drop-in in place;
+  # re-enable the repo, install Steam (i686 deps come from Fedora), and clean
+  # the repo file up again.
+  - type: dnf
+    repos:
+      cleanup: true
+      nonfree: negativo17
+    install:
+      install-weak-deps: false
+      packages:
+        - steam
+
+  # --- Gaming config + helpers -------------------------------------------
+  # Applied *after* all package installs so the gaming PPD mapping wins over
+  # the tuned-ppd RPM default and the source-built helpers land last.
+  - type: files
+    files:
+      - source: gaming
+        destination: /
+
+  # Stage Adwaita-for-Steam sources; the per-user silver-hour-steam-theme
+  # service applies them after Steam's first launch.
+  - type: script
+    scripts:
+      - install-adwaita-for-steam.sh
+    snippets:
+      - "chmod 0755 /usr/bin/game-performance /usr/bin/silver-hour-steam-theme"
+
+  - type: systemd
+    user:
+      enabled:
+        # Applies the Steam skin once ~/.steam/steam appears (first launch).
+        - silver-hour-steam-theme.path
+
+  # Must stay last.
+  - type: signing

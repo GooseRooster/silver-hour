@@ -1,0 +1,3 @@
+[Default Applications]
+# Software/appstream links open in Bazaar rather than GNOME Software.
+x-scheme-handler/appstream=io.github.kolunmi.Bazaar.desktop

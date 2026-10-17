@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# System-wide Nix with a store that survives image updates.
+#
+# bootc presents the root as a read-only composefs, so /nix cannot be created
+# at runtime; it is baked into the image (files/system/nix/.gitkeep) and
+# bind-mounted from the persistent /var/nix. nix-daemon ordering, the store
+# subdirs (tmpfiles) and the SELinux story live with the files under
+# files/system.
+modules:
+  - type: dnf
+    install:
+      packages:
+        - nix
+        - nix-daemon
+        # semanage, used by nix-selinux.sh to register the /nix file contexts.
+        - policycoreutils-python-utils
+
+  # --- SELinux file contexts for /nix ------------------------------------
+  - type: script
+    scripts:
+      - nix-selinux.sh
+
+  - type: systemd
+    system:
+      enabled:
+        - nix.mount
+        - var-nix.service
+        - nix-daemon.service
+        - nix-daemon.socket

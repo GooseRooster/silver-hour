@@ -1,0 +1,7 @@
+[Unit]
+Description=Apply the Adwaita-for-Steam skin
+ConditionPathExists=%h/.steam/steam
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/silver-hour-steam-theme apply

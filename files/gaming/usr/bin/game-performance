@@ -1,0 +1,68 @@
+#!/usr/bin/bash
+# game-performance — run a command under the gaming power profile.
+#
+# While the wrapped command runs it:
+#  * switches the power profile to `performance` (which TuneD maps to
+#    `latency-performance` via the gaming /etc/tuned/ppd.conf),
+#  * inhibits idle so the session does not sleep or lock,
+# and restores the previous profile on exit.
+#
+# The profile is driven through the power-profiles-daemon API (served by
+# tuned-ppd), falling back to tuned-adm if powerprofilesctl is unavailable.
+#
+# Usage: game-performance [--] <command> [args...]
+set -euo pipefail
+
+usage() { echo "usage: game-performance [--] <command> [args...]" >&2; }
+
+[ "$#" -ge 1 ] || { usage; exit 2; }
+[ "${1:-}" = "--" ] && shift
+[ "$#" -ge 1 ] || { usage; exit 2; }
+
+NOTIFY="$(command -v notify-send || true)"
+notify() { [ -n "$NOTIFY" ] && "$NOTIFY" -a "Game performance" "$@" >/dev/null 2>&1 || true; }
+
+# ppd_set <power-saver|balanced|performance>.
+ppd_set() {
+  local ppd="$1"
+  if command -v powerprofilesctl >/dev/null 2>&1; then
+    powerprofilesctl set "$ppd" >/dev/null 2>&1 && return 0
+  fi
+  case "$ppd" in
+    performance) tuned-adm profile latency-performance ;;
+    power-saver) tuned-adm profile powersave ;;
+    *) tuned-adm profile balanced ;;
+  esac
+}
+
+tuned_to_ppd() {
+  case "$1" in
+    latency-performance | throughput-performance) echo performance ;;
+    powersave | powersave-*) echo power-saver ;;
+    *) echo balanced ;;
+  esac
+}
+
+saved_ppd="balanced"
+if command -v powerprofilesctl >/dev/null 2>&1; then
+  active="$(powerprofilesctl get 2>/dev/null || true)"
+  [ -n "$active" ] && saved_ppd="$active"
+elif command -v tuned-adm >/dev/null 2>&1; then
+  active="$(tuned-adm active 2>/dev/null | sed -n 's/^Current active profile: *//p' || true)"
+  [ -n "$active" ] && saved_ppd="$(tuned_to_ppd "$active")"
+fi
+
+restore() {
+  trap - EXIT
+  ppd_set "$saved_ppd"
+  notify "Restored profile: $saved_ppd"
+}
+trap restore EXIT
+
+ppd_set performance
+notify "Gaming mode: $*"
+
+# Block idle for the duration of the command; the EXIT trap restores the
+# profile afterwards.
+systemd-inhibit --what=idle \
+  --why="Game performance: $*" --mode=block "$@"

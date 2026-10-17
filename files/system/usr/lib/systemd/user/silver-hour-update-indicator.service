@@ -1,0 +1,13 @@
+[Unit]
+Description=silver-hour update status tray indicator
+Documentation=man:systemd.special(7)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/silver-hour-update-indicator
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,4 @@
+# Preferred terminal emulators for xdg-terminal-exec, highest priority first.
+# This is what makes Ghostty the default terminal for Terminal=true desktop
+# entries and every consumer of the default-terminal spec.
+com.mitchellh.ghostty.desktop

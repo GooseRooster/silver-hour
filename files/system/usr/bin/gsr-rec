@@ -1,0 +1,136 @@
+#!/usr/bin/bash
+# Screen recording via GPU Screen Recorder, detached.
+#
+#   gsr-rec [--mic] <screen|region|stop>
+#
+# stop SIGINTs the running recorder. Region selection is provided by the
+# silver-hour GSR region Shell extension.
+
+set -euo pipefail
+
+state="${XDG_RUNTIME_DIR:-/tmp}/gsr-rec.state"
+
+is_recording() {
+  pgrep -f 'gpu-screen-recorder -w' >/dev/null 2>&1
+}
+
+# Ask the extension for an interactively-selected area; print GSR's
+# "WxH+X+Y" format. Returns non-zero on cancel.
+select_region() {
+  local out x y w h
+  out="$(gdbus call --session \
+    --dest org.gnome.Shell \
+    --object-path /io/github/silverhour/GsrRegion \
+    --method io.github.silverhour.GsrRegion.SelectArea 2>/dev/null)" || return 1
+
+  out="${out#(}"
+  out="${out%)}"
+  x="${out%%,*}"; out="${out#*,}"
+  y="${out%%,*}"; out="${out#*,}"
+  w="${out%%,*}"; out="${out#*,}"
+  h="${out%%,*}"
+
+  [ -n "$x" ] && [ -n "$y" ] && [ -n "$w" ] && [ -n "$h" ] || return 1
+  printf '%sx%s+%s+%s\n' "$w" "$h" "$x" "$y"
+}
+
+mic=0
+if [ "${1:-}" = "--mic" ]; then
+  mic=1
+  shift
+fi
+mode="${1:-}"
+
+if [ "$mode" = stop ]; then
+  if ! is_recording; then
+    rm -f "$state"
+    notify-send -a "Recorder" -u low "No recording in progress"
+    exit 0
+  fi
+
+  pkill -INT -f 'gpu-screen-recorder -w'
+
+  # Wait for GSR to finalize the file before reporting the path.
+  for _ in $(seq 1 100); do
+    is_recording || break
+    sleep 0.1
+  done
+
+  file=""
+  [ -f "$state" ] && file="$(cat "$state")"
+  rm -f "$state" "$state.log"
+
+  if [ -n "$file" ]; then
+    notify-send -a "Recorder" -i camera-video \
+      "Recording saved" "$(basename "$file")"
+  else
+    notify-send -a "Recorder" "Recording stopped"
+  fi
+  exit 0
+fi
+
+if is_recording; then
+  notify-send -a "Recorder" -u low "Already recording" \
+    "Stop the current recording first"
+  exit 0
+fi
+
+case "$mode" in
+  screen)
+    src=(-w screen)
+    ;;
+  region)
+    region="$(select_region)" || exit 0
+    src=(-w "$region")
+    ;;
+  *)
+    echo "usage: gsr-rec [--mic] <screen|region|stop>" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$mic" = 1 ]; then
+  audio=(-a "default_output|default_input")
+else
+  audio=(-a default_output)
+fi
+
+dir="$HOME/Videos"
+mkdir -p "$dir"
+file="$dir/Video_$(date +%Y-%m-%d_%H-%M-%S).mp4"
+log="$state.log"
+printf '%s' "$file" > "$state"
+
+# setsid detaches it from the session shell so the recording survives. Output is
+# logged so a failed start can report the actual error.
+setsid gpu-screen-recorder \
+  "${src[@]}" -c mp4 -f 60 -q very_high -cr full -cursor yes \
+  "${audio[@]}" -o "$file" </dev/null >"$log" 2>&1 &
+
+# Only report success once GSR is genuinely capturing.
+started=0
+for _ in $(seq 1 40); do
+  is_recording || break
+  if grep -q 'update fps' "$log" 2>/dev/null; then
+    started=1
+    break
+  fi
+  sleep 0.1
+done
+
+if [ "$started" = 0 ] && is_recording \
+  && ! grep -q 'gsr error' "$log" 2>/dev/null; then
+  started=1
+fi
+
+if [ "$started" = 1 ]; then
+  notify-send -a "Recorder" -i camera-video \
+    "Recording started" "$(basename "$file")"
+  exit 0
+fi
+
+err="$(tail -n 8 "$log" 2>/dev/null)"
+notify-send -a "Recorder" -u critical "Recording failed" \
+  "${err:-GPU Screen Recorder failed to start}"
+rm -f "$file" "$state" "$log"
+exit 1

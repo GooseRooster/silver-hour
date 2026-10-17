@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodically notify about a staged silver-hour system update
+
+[Timer]
+OnStartupSec=1min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target

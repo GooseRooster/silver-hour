@@ -1,0 +1,21 @@
+[Desktop Entry]
+Name=Terminal
+GenericName=Terminal
+Comment=Terminal
+Exec=ghostty
+Icon=silver-hour-terminal
+Categories=GNOME;GTK;System;TerminalEmulator;
+Keywords=terminal;tty;shell;command;commandline;console;ghostty;
+StartupNotify=true
+Terminal=false
+Actions=new-window;
+X-GNOME-UsesNotifications=true
+X-TerminalArgExec=-e
+X-TerminalArgTitle=--title=
+X-TerminalArgAppId=--class=
+X-TerminalArgDir=--working-directory=
+X-TerminalArgHold=--wait-after-command
+
+[Desktop Action new-window]
+Name=New Window
+Exec=ghostty

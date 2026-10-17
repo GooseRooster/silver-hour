@@ -1,43 +1,140 @@
 # silver-hour &nbsp; [![bluebuild build badge](https://github.com/gooserooster/silver-hour/actions/workflows/build.yml/badge.svg)](https://github.com/gooserooster/silver-hour/actions/workflows/build.yml)
 
-See the [BlueBuild docs](https://blue-build.org/how-to/setup/) for quick setup instructions for setting up your own repository based on this template.
+An immutable, image-based Fedora Silverblue for the GNOME desktop, with a
+userland built on **Nix, Home Manager and Homebrew**. silver-hour keeps the
+stable, secure, atomic GNOME base and layers on a focused set of desktop
+changes plus an updater that tells you when to restart.
 
-After setup, it is recommended you update this README to describe your custom image.
+It ships in two flavours sharing one base:
+
+| Flavour | Image | What it is |
+| --- | --- | --- |
+| **workstation** | `ghcr.io/gooserooster/silver-hour-workstation` | Daily-driver GNOME desktop with Ghostty, Bazaar and the Nix/Home Manager/Homebrew userland. |
+| **gaming** | `ghcr.io/gooserooster/silver-hour-gaming` | Everything in workstation plus Steam, Wine/Faugus, a TuneD latency profile and GPU Screen Recorder tuned for gaming. |
+
+## What's inside
+
+- **Atomic Fedora Silverblue** (GNOME), built on BlueBuild's `fedora-silverblue`
+  base with full codecs and hardware acceleration.
+- **Ghostty** as the default terminal, presented simply as **Terminal**
+  (matching GNOME's own terminal icon and name). The stock terminals are
+  removed and Nautilus gets a "Terminal" context entry.
+- **Bazaar** as the app store (GNOME Software removed), with the Bazaar
+  companion extension for "App Details"/"Uninstall" integration.
+- **GPU Screen Recorder** for screenshots and recording, with a small GNOME
+  Shell extension providing interactive region selection so the GPU path is
+  preserved.
+- **Update notifications and a tray indicator**: staged bootc updates are
+  detected, notified, and shown in the status tray with a "restart to apply"
+  action.
+- **Nix + flakes** with a persistent store (`/nix` backed by `/var/nix`), and
+  **Home Manager** applied per user for the dotfiles layer.
+- **Homebrew** (Linuxbrew), **zsh** as the login shell, and **topgrade** to
+  update the OS, Flatpaks and Homebrew in one run.
+- A small baseline of CLI tools (`bat`, `fd`, `ripgrep`, `eza`, `jq`, `yq`,
+  `ncdu`, `btop`, `gh`, …) and Nerd Fonts, so a fresh account is useful before
+  Home Manager runs.
+
+### Gaming flavour
+
+- Native **Steam** (Adwaita-for-Steam skinned), **Wine** + winetricks and
+  **Faugus Launcher**.
+- A `game-performance` helper that switches to a latency power profile and
+  inhibits idle while a game runs.
+- The gaming flavour maps the power-profiles-daemon `performance` profile to
+  TuneD's `latency-performance`.
 
 ## Installation
 
-> [!WARNING]  
-> [This is an experimental feature](https://www.fedoraproject.org/wiki/Changes/OstreeNativeContainerStable), try at your own discretion.
+> [!WARNING]
+> This is an experimental feature. Rebase at your own discretion.
 
-To rebase an existing atomic Fedora installation to the latest build:
+Pick a flavour and rebase an existing atomic Fedora installation to it.
 
-- First rebase to the unsigned image, to get the proper signing keys and policies installed:
-  ```
-  rpm-ostree rebase ostree-unverified-registry:ghcr.io/gooserooster/silver-hour:latest
-  ```
-- Reboot to complete the rebase:
-  ```
-  systemctl reboot
-  ```
-- Then rebase to the signed image, like so:
-  ```
-  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/gooserooster/silver-hour:latest
-  ```
-- Reboot again to complete the installation
-  ```
-  systemctl reboot
-  ```
+1. Rebase to the unsigned image first, so the signing policy is installed:
 
-The `latest` tag will automatically point to the latest build. That build will still always use the Fedora version specified in `recipe.yml`, so you won't get accidentally updated to the next major version.
+   ```sh
+   bootc switch ghcr.io/gooserooster/silver-hour-workstation:latest
+   ```
+
+   (replace `workstation` with `gaming` for the gaming flavour)
+
+2. Reboot:
+
+   ```sh
+   systemctl reboot
+   ```
+
+3. Rebase to the signed image:
+
+   ```sh
+   bootc switch --enforce-container-sigpolicy ghcr.io/gooserooster/silver-hour-workstation:latest
+   ```
+
+4. Reboot again to complete the installation.
+
+The `latest` tag always points at the newest build, which still tracks the
+Fedora version pinned in the recipe, so you won't be moved to a new major
+release by accident.
 
 ## ISO
 
-If build on Fedora Atomic, you can generate an offline ISO with the instructions available [here](https://blue-build.org/how-to/generate-iso/#_top). These ISOs cannot unfortunately be distributed on GitHub for free due to large sizes, so for public projects something else has to be used for hosting.
+An offline ISO can be generated from a local recipe using the Silverblue
+installer variant:
+
+```sh
+bluebuild generate-iso --iso-name silver-hour-workstation.iso \
+  --variant silverblue recipe recipes/workstation.yml
+# or: just iso workstation
+```
+
+ISOs are large, so they aren't distributed via GitHub.
 
 ## Verification
 
-These images are signed with [Sigstore](https://www.sigstore.dev/)'s [cosign](https://github.com/sigstore/cosign). You can verify the signature by downloading the `cosign.pub` file from this repo and running the following command:
+These images are signed with [Sigstore](https://www.sigstore.dev/)'s
+[cosign](https://github.com/sigstore/cosign). Verify with the `cosign.pub` in
+this repo:
 
-```bash
-cosign verify --key cosign.pub ghcr.io/gooserooster/silver-hour
+```sh
+cosign verify --key cosign.pub ghcr.io/gooserooster/silver-hour-workstation
 ```
+
+## Secure Boot
+
+silver-hour is built on BlueBuild's `fedora-silverblue` base, which signs the
+kernel and kernel modules with **BlueBuild's own MOK key**
+(`akmods-blue-build.der`) rather than Fedora's. If Secure Boot is enabled and
+the key is not enrolled, the image **will not boot**. The enrollment password
+is **`bluebuild`**.
+
+- **Installing from an ISO:** the ISO enrolls the key during installation. On
+  first boot, choose **Enroll MOK** in the shim manager and enter `bluebuild`.
+- **Installing by rebasing:** enroll the key yourself after rebasing:
+
+  ```sh
+  sudo mokutil --timeout -1
+  sudo mokutil --import /etc/pki/akmods/certs/akmods-blue-build.der
+  # enter "bluebuild" as the one-time password, then reboot
+  ```
+
+This is **separate** from cosign verification: cosign signs the OCI image for
+`bootc` signature policy; the MOK key is what UEFI Secure Boot verifies at boot.
+
+## Building locally
+
+```sh
+nix develop            # BlueBuild CLI + podman/buildah + qemu + just
+just build workstation # or: bluebuild build recipes/workstation.yml
+just build-root workstation && just disk workstation && just vm-disk workstation
+just iso workstation   # build the offline ISO from a published image
+```
+
+## Userland
+
+Home Manager is applied per user against the dotfiles repo; the image ships
+system-wide Nix with a persistent store and Homebrew, and seeds a default
+`topgrade` configuration. `silver-hour-topgrade` runs topgrade in a login shell
+so Homebrew is on `PATH`. Run `ujust --list` for the update helpers
+(`silver-hour-update-status`, `silver-hour-test-update`,
+`silver-hour-clear-update`).

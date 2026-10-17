@@ -1,0 +1,7 @@
+{
+  "uuid": "silver-hour-gsr-region@silver-hour",
+  "name": "silver-hour GSR region",
+  "description": "Exposes interactive region selection to gpu-screen-recorder over D-Bus.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 1
+}

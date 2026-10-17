@@ -1,0 +1,13 @@
+[Unit]
+Description=Set zsh as the login shell for human users
+After=local-fs.target
+Before=display-manager.service
+ConditionPathExists=/usr/bin/zsh
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash /usr/libexec/silver-hour-set-login-shell
+
+[Install]
+WantedBy=multi-user.target

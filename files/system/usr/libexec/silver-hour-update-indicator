@@ -1,0 +1,111 @@
+#!/usr/bin/python3
+# silver-hour update tray indicator.
+#
+# An AppIndicator/KStatusNotifierItem (shown by the appindicator GNOME Shell
+# extension) that reflects the bootc update status written by
+# silver-hour-update-status.service. It gives the "updates ready — restart to
+# apply" state a persistent, GNOME-native home in the status tray.
+import json
+import subprocess
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import GLib, Gtk  # noqa: E402
+
+try:
+    gi.require_version("AyatanaAppIndicator3", "0.1")
+    from gi.repository import AyatanaAppIndicator3 as AppIndicator  # noqa: E402
+except (ValueError, ImportError):
+    gi.require_version("AppIndicator3", "0.1")
+    from gi.repository import AppIndicator3 as AppIndicator  # noqa: E402
+
+
+STATUS_FILE = "/run/silver-hour/update-status.json"
+POLL_SECONDS = 20
+APP_ID = "silver-hour-update"
+
+
+def read_status():
+    try:
+        with open(STATUS_FILE, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+class Indicator:
+    def __init__(self):
+        self.indicator = AppIndicator.Indicator.new(
+            APP_ID,
+            "software-update-available-symbolic",
+            AppIndicator.IndicatorCategory.SYSTEM_SERVICES,
+        )
+        self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
+        self.indicator.set_title("silver-hour updates")
+        self.indicator.set_menu(self._build_menu())
+        self.refresh()
+        GLib.timeout_add_seconds(POLL_SECONDS, self._tick)
+
+    def _build_menu(self):
+        menu = Gtk.Menu()
+
+        self.item_status = Gtk.MenuItem(label="Checking…")
+        self.item_status.set_sensitive(False)
+        menu.append(self.item_status)
+        menu.append(Gtk.SeparatorMenuItem())
+
+        topgrade = Gtk.MenuItem(label="Run updates (topgrade)")
+        topgrade.connect("activate", self._run, "silver-hour-topgrade")
+        menu.append(topgrade)
+
+        self.item_restart = Gtk.MenuItem(label="Restart to apply")
+        self.item_restart.connect("activate", self._run, "systemctl reboot")
+        menu.append(self.item_restart)
+
+        menu.append(Gtk.SeparatorMenuItem())
+        quit_item = Gtk.MenuItem(label="Quit")
+        quit_item.connect("activate", Gtk.main_quit)
+        menu.append(quit_item)
+
+        menu.show_all()
+        return menu
+
+    @staticmethod
+    def _run(_item, command):
+        subprocess.Popen(["/usr/bin/bash", "-lc", command], start_new_session=True)
+
+    def _tick(self):
+        self.refresh()
+        return True
+
+    def refresh(self):
+        status = read_status()
+        staged = status.get("staged") is True
+        available = status.get("updateAvailable") is True
+        version = status.get("stagedVersion") or ""
+
+        if staged:
+            icon = "software-update-urgent-symbolic"
+            label = f"Update {version} ready — restart to apply".replace("  ", " ")
+        elif available:
+            icon = "software-update-available-symbolic"
+            label = "Update available — run topgrade"
+        else:
+            icon = "software-update-available-symbolic"
+            label = "silver-hour is up to date"
+
+        self.indicator.set_icon_full(icon, label)
+        self.item_status.set_label(label)
+        self.item_restart.set_visible(staged)
+
+    def run(self):
+        Gtk.main()
+
+
+def main():
+    Indicator().run()
+
+
+if __name__ == "__main__":
+    main()
