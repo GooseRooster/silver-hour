@@ -18,7 +18,8 @@ It ships in two flavours sharing one base:
   base with full codecs and hardware acceleration.
 - **Ghostty** as the default terminal, presented simply as **Terminal**
   (matching GNOME's own terminal icon and name). The stock terminals are
-  removed and Nautilus gets a "Terminal" context entry.
+  removed and Nautilus gets a single "Open in Terminal" context entry
+  (Ghostty's bundled extension is relabelled and reused).
 - **Bazaar** as the app store (GNOME Software removed), with the Bazaar
   companion extension for "App Details"/"Uninstall" integration.
 - **Caffeine** and **Clipboard Indicator** as system Shell extensions:

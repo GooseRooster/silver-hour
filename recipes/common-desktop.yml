@@ -72,12 +72,28 @@ modules:
   # --- Fix executable bits and refresh caches ----------------------------
   - type: script
     snippets:
+      # Ghostty ships its own Nautilus extension. Reuse it (it already handles
+      # multi-folder and file selections) but relabel the entry and swap the
+      # icon, so Nautilus shows a single "Open in Terminal" item. Fail the
+      # build if Ghostty's source strings change rather than silently
+      # regressing to "Open in Ghostty".
+      - >-
+        set -e;
+        ext=/usr/share/nautilus-python/extensions/ghostty.py;
+        test -f "$ext";
+        grep -Fq "label=_('Open in Ghostty')" "$ext";
+        grep -Fq "icon='com.mitchellh.ghostty'" "$ext";
+        sed -i
+        -e "s/label=_('Open in Ghostty')/label=_('Open in Terminal')/"
+        -e "s/icon='com.mitchellh.ghostty'/icon='silver-hour-terminal'/" "$ext";
+        grep -Fq "label=_('Open in Terminal')" "$ext";
+        grep -Fq "icon='silver-hour-terminal'" "$ext";
+        ! grep -Fq "Open in Ghostty" "$ext"
       - >-
         chmod 0755
         /usr/bin/termapp
         /usr/bin/gsr-shot
         /usr/bin/gsr-rec
-        /usr/share/nautilus-python/extensions/silver-hour-ghostty.py
       # Compile the system dconf database from /etc/dconf/db/local.d.
       - dconf update
       - >-
