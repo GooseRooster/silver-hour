@@ -14,6 +14,17 @@
 # that reports the *manifest-list/index* digest, a different object that never
 # matches the platform digest bootc stores.)
 #
+# Usage:
+#   silver-hour-update-status           full check: remote manifest + local status
+#   silver-hour-update-status --local   local status only, no network access
+#
+# The remote half costs a few seconds and a manifest fetch, so it only runs in
+# the full mode. The local half is a read-only lookup and runs far more often
+# (silver-hour-update-status-local.timer). In --local mode there is no remote
+# information, so `availableDigest`/`updateAvailable` are carried over from the
+# previous status file instead of being recomputed; that keeps the "update
+# available" state stable between the (much rarer) remote checks.
+#
 # Output schema:
 #   staged           bool   a deployment is queued for the next boot
 #   stagedVersion    string | null
@@ -25,6 +36,16 @@
 #   checkedAt        int    unix seconds
 set -euo pipefail
 
+LOCAL_ONLY=0
+case "${1:-}" in
+  "") ;;
+  --local) LOCAL_ONLY=1 ;;
+  *)
+    echo "usage: $0 [--local]" >&2
+    exit 2
+    ;;
+esac
+
 OUT="/run/silver-hour/update-status.json"
 STATUS_TMP="$(mktemp)"
 
@@ -33,14 +54,28 @@ trap cleanup EXIT
 
 # Refresh the upstream manifest (metadata only; safe to run in a timer). When a
 # newer image exists bootc records it as `booted.cachedUpdate`; when there is
-# nothing new it leaves the field null.
-bootc upgrade --check >/dev/null 2>&1 || true
+# nothing new it leaves the field null. Skipped in --local mode: the fetch
+# costs seconds and writes to the image store, and the local check runs every
+# few minutes.
+if [ "$LOCAL_ONLY" -eq 0 ]; then
+  bootc upgrade --check >/dev/null 2>&1 || true
+fi
 
 if ! bootc status --json --format-version=1 >"$STATUS_TMP" 2>/dev/null; then
   exit 0
 fi
 
 mkdir -p /run/silver-hour
+
+# Previous status, read as late as possible so a concurrent full check is not
+# overwritten with older values.
+prev='{}'
+if [ -r "$OUT" ]; then
+  prev="$(cat "$OUT" 2>/dev/null || echo '{}')"
+  if ! printf '%s' "$prev" | jq -e . >/dev/null 2>&1; then
+    prev='{}'
+  fi
+fi
 
 tmp_out="$(mktemp "/run/silver-hour/.update-status.XXXXXX")"
 # bootc host API v1 (org.containers.bootc/v1): a BootEntry has an `image`
@@ -52,7 +87,7 @@ tmp_out="$(mktemp "/run/silver-hour/.update-status.XXXXXX")"
 # booted image. `bootc upgrade --check` can leave a cached entry whose digest
 # equals the booted one, and bootc's own renderer hides those for the same
 # reason.
-jq -c '
+jq -c --argjson local "$LOCAL_ONLY" --argjson prev "$prev" '
   (.status.staged != null) as $staged
   | (.status.staged.image.version? // null) as $stagedVersion
   | (.status.staged.image.imageDigest? // null) as $stagedDigest
@@ -60,14 +95,22 @@ jq -c '
   | (.status.booted.image.imageDigest? // null) as $bootedDigest
   | (.status.booted.cachedUpdate.imageDigest? // .status.booted.cachedUpdate.image?.imageDigest? // null) as $cachedDigest
   | (($cachedDigest != null) and ($cachedDigest != $bootedDigest)) as $cachedNewer
+  | (if $cachedNewer
+     then $cachedDigest
+     elif ($local == 1)
+          and (($prev.availableDigest? // null) != null)
+          and ($prev.availableDigest != $bootedDigest)
+     then $prev.availableDigest
+     else null
+     end) as $availableDigest
   | {
       staged: $staged,
       stagedVersion: $stagedVersion,
       stagedDigest: $stagedDigest,
       bootedVersion: $bootedVersion,
       bootedDigest: $bootedDigest,
-      availableDigest: (if $cachedNewer then $cachedDigest else null end),
-      updateAvailable: ($staged or $cachedNewer),
+      availableDigest: $availableDigest,
+      updateAvailable: ($staged or ($availableDigest != null)),
       checkedAt: (now | floor)
     }
   ' "$STATUS_TMP" >"$tmp_out"

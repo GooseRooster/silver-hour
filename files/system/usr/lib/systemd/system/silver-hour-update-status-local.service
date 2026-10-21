@@ -1,0 +1,10 @@
+[Unit]
+Description=Record silver-hour bootc status (local only)
+
+[Service]
+Type=oneshot
+# `bootc status` only works on a bootc-booted system. Both markers are
+# checked so a future backend that does not create /run/ostree-booted does not
+# silently disable the updater.
+ExecCondition=/bin/sh -c 'test -e /run/ostree-booted || test -e /run/bootc/storage'
+ExecStart=/usr/libexec/silver-hour-update-status --local

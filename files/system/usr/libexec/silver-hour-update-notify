@@ -4,34 +4,61 @@
 # Runs from the per-user silver-hour-update-notify.timer. It reads the
 # world-readable status file written by silver-hour-update-status.service (which
 # runs as root) and sends a desktop notification the first time it sees a new
-# staged deployment digest. The last-seen digest is kept per user so the
+# staged deployment. The last-seen deployment is kept per user so the
 # notification is not repeated.
+#
+# Staging is detected with the unprivileged ostree probe
+# (silver-hour-staged-deployment), so the notification appears as soon as a
+# deployment is queued - even before the root status file has caught up. The
+# deployment checksum is the notification identity: it is available immediately
+# and does not change when the root status file is refreshed. The status file's
+# image digest is only used as a fallback on systems where the probe is
+# unavailable.
 #
 # A merely-available update (upstream is newer, nothing downloaded yet) is
 # surfaced only by the tray indicator, not by a notification.
 set -euo pipefail
 
 STATUS="/run/silver-hour/update-status.json"
+PROBE="/usr/libexec/silver-hour-staged-deployment"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/silver-hour"
 LAST_FILE="$STATE_DIR/update-notify.staged"
 
-[ -r "$STATUS" ] || exit 0
+staged_checksum=""
+if [ -x "$PROBE" ]; then
+  staged_checksum="$("$PROBE" 2>/dev/null || true)"
+fi
 
-staged="$(jq -r '.staged // false' "$STATUS" 2>/dev/null || echo false)"
-[ "$staged" = "true" ] || exit 0
+json_staged="false"
+json_digest=""
+json_version=""
+if [ -r "$STATUS" ]; then
+  json_staged="$(jq -r '.staged // false' "$STATUS" 2>/dev/null || echo false)"
+  json_digest="$(jq -r '.stagedDigest // empty' "$STATUS" 2>/dev/null || true)"
+  json_version="$(jq -r '.stagedVersion // empty' "$STATUS" 2>/dev/null || true)"
+fi
 
-current="$(jq -r '.stagedDigest // empty' "$STATUS" 2>/dev/null || true)"
-[ -n "$current" ] || exit 0
+if [ -n "$staged_checksum" ]; then
+  identity="$staged_checksum"
+elif [ "$json_staged" = "true" ] && [ -n "$json_digest" ]; then
+  identity="$json_digest"
+else
+  exit 0
+fi
 
 last=""
 [ -f "$LAST_FILE" ] && last="$(cat "$LAST_FILE" 2>/dev/null || true)"
-[ "$current" = "$last" ] && exit 0
+[ "$identity" = "$last" ] && exit 0
 
-version="$(jq -r '.stagedVersion // "new"' "$STATUS" 2>/dev/null || echo new)"
-
-notify-send -u normal -a "silver-hour" -i system-software-update \
-  "Updates ready to install" \
-  "silver-hour ${version} is staged. Restart to apply it." >/dev/null 2>&1 || true
+if [ "$json_staged" = "true" ] && [ -n "$json_version" ]; then
+  notify-send -u normal -a "silver-hour" -i system-software-update \
+    "Updates ready to install" \
+    "silver-hour ${json_version} is staged. Restart to apply it." >/dev/null 2>&1 || true
+else
+  notify-send -u normal -a "silver-hour" -i system-software-update \
+    "Updates ready to install" \
+    "A new silver-hour system update is staged. Restart to apply it." >/dev/null 2>&1 || true
+fi
 
 mkdir -p "$STATE_DIR"
-printf '%s' "$current" >"$LAST_FILE"
+printf '%s' "$identity" >"$LAST_FILE"

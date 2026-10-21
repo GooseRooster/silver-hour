@@ -29,8 +29,12 @@ modules:
       enabled:
         # Detects staged / available bootc updates (needs root: `bootc status`
         # refuses unprivileged users) and writes
-        # /run/silver-hour/update-status.json.
+        # /run/silver-hour/update-status.json. The full check also fetches the
+        # upstream manifest, so it runs infrequently.
         - silver-hour-update-status.timer
+        # Cheap local-only variant (no network): keeps the staged/booted
+        # version and digest in the status file fresh.
+        - silver-hour-update-status-local.timer
     user:
       enabled:
         # Watches the status file and notifies on a staged update.
@@ -44,6 +48,7 @@ modules:
         /usr/libexec/silver-hour-update-notify
         /usr/libexec/silver-hour-update-simulate
         /usr/libexec/silver-hour-update-indicator
+        /usr/libexec/silver-hour-staged-deployment
         /usr/bin/silver-hour-topgrade
 
   # `blujust` update helpers for exercising the notification/tray path without

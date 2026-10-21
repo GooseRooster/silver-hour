@@ -10,6 +10,13 @@
 #   * up to date -> a checkmark
 #   * available  -> the "update available" icon
 #   * staged     -> the "urgent update" icon, with the indicator attention state
+#
+# Whether a deployment is staged is detected with an unprivileged ostree probe
+# (silver-hour-staged-deployment) rather than with the status file alone, so a
+# staged deployment shows up within seconds of it being queued - no matter
+# whether topgrade, a manual `sudo bootc upgrade` or the automatic updater
+# staged it. The status file remains the source for the upstream availability
+# check and for the version of the staged update.
 import json
 import subprocess
 
@@ -27,6 +34,8 @@ except (ValueError, ImportError):
 
 
 STATUS_FILE = "/run/silver-hour/update-status.json"
+STAGED_HELPER = "/usr/libexec/silver-hour-staged-deployment"
+NOTIFY_SERVICE = "silver-hour-update-notify.service"
 POLL_SECONDS = 20
 APP_ID = "silver-hour-update"
 
@@ -43,6 +52,52 @@ def read_status():
         return {}
 
 
+def staged_deployment():
+    """Checksum of the staged deployment, or "" when nothing is staged.
+
+    The helper shells out to `ostree admin status --json`, which works
+    unprivileged and costs a few milliseconds.
+    """
+    try:
+        proc = subprocess.run(
+            [STAGED_HELPER],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return proc.stdout.strip()
+
+
+def update_state(status, staged_checksum):
+    """Icon, label and staged flag for the current update state.
+
+    A staged deployment is authoritative: the probe detects it even before the
+    root status file has been refreshed. The status file provides the version
+    of the staged update once it has caught up.
+    """
+    staged = status.get("staged") is True or bool(staged_checksum)
+    available = status.get("updateAvailable") is True
+    version = status.get("stagedVersion") or ""
+
+    if staged:
+        icon = ICON_STAGED
+        if version:
+            label = f"Update {version} ready — restart to apply".replace("  ", " ")
+        else:
+            label = "Update ready — restart to apply"
+    elif available:
+        icon = ICON_AVAILABLE
+        label = "Update available — run topgrade"
+    else:
+        icon = ICON_CURRENT
+        label = "silver-hour is up to date"
+
+    return {"staged": staged, "icon": icon, "label": label}
+
+
 class Indicator:
     def __init__(self):
         self.indicator = AppIndicator.Indicator.new(
@@ -53,6 +108,7 @@ class Indicator:
         self.indicator.set_status(AppIndicator.IndicatorStatus.ACTIVE)
         self.indicator.set_title("silver-hour updates")
         self.indicator.set_menu(self._build_menu())
+        self.last_staged = ""
         self.refresh()
         GLib.timeout_add_seconds(POLL_SECONDS, self._tick)
 
@@ -84,33 +140,46 @@ class Indicator:
     def _run(_item, command):
         subprocess.Popen(["/usr/bin/bash", "-lc", command], start_new_session=True)
 
+    @staticmethod
+    def _notify_staged():
+        """Ask the per-user notifier to announce a newly staged deployment.
+
+        The notifier deduplicates on the deployment checksum, so this only
+        results in a notification for a deployment that has not been announced
+        yet.
+        """
+        try:
+            subprocess.Popen(
+                ["systemctl", "--user", "start", NOTIFY_SERVICE],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except OSError:
+            pass
+
     def _tick(self):
         self.refresh()
         return True
 
     def refresh(self):
         status = read_status()
-        staged = status.get("staged") is True
-        available = status.get("updateAvailable") is True
-        version = status.get("stagedVersion") or ""
+        staged_checksum = staged_deployment()
+        state = update_state(status, staged_checksum)
 
-        if staged:
-            icon = ICON_STAGED
-            label = f"Update {version} ready — restart to apply".replace("  ", " ")
-            state = AppIndicator.IndicatorStatus.ATTENTION
-        elif available:
-            icon = ICON_AVAILABLE
-            label = "Update available — run topgrade"
-            state = AppIndicator.IndicatorStatus.ACTIVE
+        if state["staged"]:
+            indicator_status = AppIndicator.IndicatorStatus.ATTENTION
         else:
-            icon = ICON_CURRENT
-            label = "silver-hour is up to date"
-            state = AppIndicator.IndicatorStatus.ACTIVE
+            indicator_status = AppIndicator.IndicatorStatus.ACTIVE
 
-        self.indicator.set_status(state)
-        self.indicator.set_icon_full(icon, label)
-        self.item_status.set_label(label)
-        self.item_restart.set_visible(staged)
+        self.indicator.set_status(indicator_status)
+        self.indicator.set_icon_full(state["icon"], state["label"])
+        self.item_status.set_label(state["label"])
+        self.item_restart.set_visible(state["staged"])
+
+        if staged_checksum and staged_checksum != self.last_staged:
+            self.last_staged = staged_checksum
+            self._notify_staged()
 
     def run(self):
         Gtk.main()

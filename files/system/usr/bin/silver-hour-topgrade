@@ -3,8 +3,9 @@
 #
 # Runs topgrade in a login shell so Homebrew's shellenv is on PATH. topgrade's
 # default config enables the bootc, Flatpak and Homebrew steps; users can
-# override it in ~/.config/topgrade.toml. After it finishes, if a deployment is
-# staged, point the user at a restart.
+# override it in ~/.config/topgrade.toml. After it finishes, the bootc status
+# is refreshed so a newly staged deployment is picked up immediately, and if a
+# deployment is staged, the user is pointed at a restart.
 #
 # topgrade elevates with `sudo -v` for the bootc and system-Flatpak steps, and
 # sudo needs a controlling terminal to prompt for a password. The tray
@@ -31,6 +32,15 @@ if [ -n "$ZSH" ]; then
 else
   topgrade
 fi
+
+# Refresh the bootc status now that topgrade is done, so the tray indicator
+# and the notifier see a freshly staged deployment instead of waiting for the
+# next status check. topgrade has just run `sudo -v`, so the sudo timestamp is
+# normally still valid; when it is not, this is skipped silently and the
+# unprivileged staged-deployment probe still picks the change up.
+sudo -n /usr/libexec/silver-hour-update-status >/dev/null 2>&1 \
+  || sudo -n systemctl start silver-hour-update-status.service >/dev/null 2>&1 \
+  || true
 
 if [ -r /run/silver-hour/update-status.json ] \
   && jq -e '.staged == true' /run/silver-hour/update-status.json >/dev/null 2>&1; then

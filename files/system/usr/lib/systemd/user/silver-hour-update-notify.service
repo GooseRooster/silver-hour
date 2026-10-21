@@ -1,7 +1,8 @@
 [Unit]
 Description=Notify when a silver-hour system update is staged
-ConditionPathExists=/run/silver-hour/update-status.json
 
 [Service]
 Type=oneshot
+# The notifier detects a staged deployment with the unprivileged ostree probe,
+# so it does not depend on the root status file being present.
 ExecStart=/usr/libexec/silver-hour-update-notify

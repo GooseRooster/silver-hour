@@ -39,7 +39,9 @@ It ships in two flavours sharing one base:
   preserved.
 - **Update notifications and a tray indicator**: staged bootc updates are
   detected, notified, and shown in the status tray with a "restart to apply"
-  action.
+  action. Staging is detected with an unprivileged `ostree` probe, so a queued
+  deployment shows up within seconds - no matter whether topgrade, a manual
+  `sudo bootc upgrade` or the automatic updater staged it.
 - **Nix + flakes** with a persistent store (`/nix` backed by `/var/nix`), and
   **Home Manager** applied per user for the dotfiles layer.
 - **Homebrew** (Linuxbrew), **zsh** as the login shell, and **topgrade** to
@@ -200,5 +202,29 @@ Home Manager is applied per user against the dotfiles repo; the image ships
 system-wide Nix with a persistent store and Homebrew, and seeds a default
 `topgrade` configuration. `silver-hour-topgrade` runs topgrade in a login shell
 so Homebrew is on `PATH`. Run `blujust` to list the update helpers
-(`silver-hour-update-status`, `silver-hour-test-update`,
-`silver-hour-clear-update`).
+(`silver-hour-update-status`, `silver-hour-staged-probe`,
+`silver-hour-test-update`, `silver-hour-clear-update`).
+
+## Updates
+
+The updater is built from three signals, cheapest first:
+
+- **Staged deployment** - `silver-hour-staged-deployment` runs
+  `ostree admin status --json` and looks for a deployment carrying the
+  `staged` flag. It works unprivileged and costs a few milliseconds, so the
+  tray indicator and the notifier see a queued deployment within seconds of it
+  being staged - by topgrade, by a manual `sudo bootc upgrade`, or by the
+  automatic updater.
+- **Local status** - `silver-hour-update-status --local` (root) records the
+  booted and staged deployment, including the version, in
+  `/run/silver-hour/update-status.json`. It only reads local state and runs
+  every five minutes.
+- **Upstream availability** - the same script without `--local` also runs
+  `bootc upgrade --check`, which fetches the upstream manifest. That costs a
+  few seconds and a registry round trip, so it only runs every fifteen
+  minutes.
+
+`silver-hour-topgrade` refreshes the status right after topgrade finishes, so
+a deployment staged by topgrade is visible right away. The status file is
+world-readable: the tray indicator and the notification service read it as an
+unprivileged user.

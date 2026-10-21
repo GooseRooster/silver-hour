@@ -1,0 +1,21 @@
+#!/usr/bin/bash
+# Print the checksum of the staged deployment, if there is one.
+#
+# `ostree admin status --json` works unprivileged and reports a per-deployment
+# "staged" flag, so this probe needs no root, no network and no access to the
+# image store. It answers "is a new deployment queued for the next boot?" for
+# any origin: topgrade, a manual `sudo bootc upgrade`, `bootc update` or the
+# automatic updater.
+#
+# Prints the staged deployment checksum on stdout, and nothing at all when no
+# deployment is staged. Always exits 0 so it can be used as a plain probe.
+set -uo pipefail
+
+command -v ostree >/dev/null 2>&1 || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+
+ostree admin status --json 2>/dev/null \
+  | jq -r '[.deployments[]? | select(.staged == true) | .checksum] | first // empty' \
+  2>/dev/null || true
+
+exit 0
