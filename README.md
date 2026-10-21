@@ -22,9 +22,13 @@ It ships in two flavours sharing one base:
   (Ghostty's bundled extension is relabelled and reused).
 - **Bazaar** as the app store (GNOME Software removed), with the Bazaar
   companion extension for "App Details"/"Uninstall" integration.
-- **Caffeine** and **Clipboard Indicator** as system Shell extensions:
-  Caffeine keeps the session awake (and activates automatically for fullscreen
-  apps), and Clipboard Indicator adds clipboard history to the top bar.
+- **Caffeine** as a system Shell extension: it keeps the session awake (and
+  activates automatically for fullscreen apps).
+- **Serigy** as a system Flatpak: a minimal clipboard manager (pin and re-copy
+  what you need). It is *not* started automatically — launching it is left to
+  the user, since a clipboard manager sees everything you copy. System Flatpaks
+  are (re)installed shortly after each boot, so it appears a moment after the
+  first login.
 - **VS Code** (official Microsoft build) plus a curated developer CLI baseline
   (`direnv`, `zoxide`, `git-lfs`, `git-delta`, `yq`, `hyperfine`, `tokei`,
   `pipx`, `uv`, `httpie`, `sqlite`, container tooling). Telemetry and background
@@ -46,8 +50,8 @@ It ships in two flavours sharing one base:
 
 ### Gaming flavour
 
-- Native **Steam** (Adwaita-for-Steam skinned), **Wine** + winetricks and
-  **Faugus Launcher**.
+- Native **Steam**, **Wine** + winetricks and **Faugus Launcher**. The Wine
+  GUI entries are left out of the app grid (see the gaming notes).
 - **ProtonPlus** (compatibility-tool manager) and **Protontricks** as system
   Flatpaks, alongside a curated general-purpose set of gaming utilities:
   **MangoHud** (with a shipped default `MangoHud.conf`), **Gamescope**,
@@ -59,6 +63,14 @@ It ships in two flavours sharing one base:
 
 #### Gaming notes
 
+- **Wine**: the image installs the Wine components (`wine-core`,
+  `wine-common`, `wine-pulseaudio`, `wine-winefonts`, `wine-mono`,
+  `wine-dxvk`, …) but *not* Fedora's `wine-desktop` subpackage, which is
+  where every Wine GUI entry lives (`wine`, `winecfg`, `wineboot`,
+  `notepad`, `winemine`, the "Wine" app-grid menu, …). `wine` and
+  `winetricks` are on `PATH` as usual; `winetricks`'s own launcher entry is
+  hidden with `NoDisplay=true`. Want the entries back? Install
+  `wine-desktop` in a toolbox (`dnf install wine-desktop`) or layer it.
 - **MangoHud**: launch a game with `mangohud %command%` (or `MANGOHUD=1
   %command%`) in Steam, or tick MangoHud in Faugus. Toggle the overlay in-game
   with `RightShift+F12`. The shipped default lives at

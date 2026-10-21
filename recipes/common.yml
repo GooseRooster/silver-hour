@@ -62,6 +62,11 @@ modules:
   # Firefox, Disks and System Monitor, but not the GNOME apps. They are
   # installed here as system Flatpaks from Flathub.
   #
+  # "System" scope means the module ships the *configuration* and the apps are
+  # (re)installed by bluebuild's system-flatpak-setup.service shortly after
+  # every boot (OnBootSec=30): /var is a persistent directory in these images,
+  # so the Flatpak installation cannot be baked into the image itself.
+  #
   # Boxes is the exception: it is installed from the GNOME Nightly repo as the
   # rewritten beta (org.gnome.Boxes, from Flathub, is deliberately not
   # installed). The nightly remote is added system-wide so the app stays
@@ -78,6 +83,7 @@ modules:
         install:
           - io.mpv.Mpv
           - io.github.kolunmi.Bazaar
+          - io.github.cleomenezesjr.Serigy
           - be.alexandervanhee.gradia
           - org.gnome.Calculator
           - org.gnome.Calendar

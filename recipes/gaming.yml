@@ -13,14 +13,34 @@ modules:
   - from-file: common.yml
 
   # --- Wine stack + Faugus Launcher --------------------------------------
+  # The Wine GUI entries (wine, winecfg, wineboot, notepad, winemine, the
+  # "Wine" app-grid menu, ...) all live in Fedora's wine-desktop subpackage,
+  # which the `wine` metapackage hard-requires. The metapackage is therefore
+  # not installed: its components are listed individually and wine-desktop is
+  # excluded, so `wine` and `winetricks` stay on PATH without flooding the
+  # app grid. The optional plugins of the metapackage (cms, ldap, opencl,
+  # smartcard, twain) are left out as well.
   - type: dnf
     repos:
       cleanup: true
       copr:
         - faugus/faugus-launcher
     install:
+      exclude:
+        - wine-desktop
       packages:
-        - wine
+        - wine-core
+        - wine-core.i686
+        - wine-common
+        - wine-pulseaudio
+        - wine-pulseaudio.i686
+        - wine-winefonts
+        - wine-mono
+        - wine-dxvk
+        - mingw32-wine-gecko
+        - mingw64-wine-gecko
+        - mesa-dri-drivers.i686
+        - gstreamer1-plugins-good
         - winetricks
         - faugus-launcher
 
@@ -39,10 +59,10 @@ modules:
         - vulkan-tools
 
   # --- Gaming Flatpaks: ProtonPlus + Protontricks ------------------------
-  # System Flatpaks so they exist before first login. ProtonPlus manages
-  # Proton/Wine/DXVK/VKD3D runners for Steam and Faugus; Protontricks runs
-  # winetricks inside existing Proton prefixes. notify is off to keep boot
-  # quiet (see common.yml).
+  # System Flatpaks, so they are (re)installed for every user after each boot
+  # (see common.yml). ProtonPlus manages Proton/Wine/DXVK/VKD3D runners for
+  # Steam and Faugus; Protontricks runs winetricks inside existing Proton
+  # prefixes. notify is off to keep boot quiet (see common.yml).
   - type: default-flatpaks
     configurations:
       - notify: false
@@ -72,19 +92,13 @@ modules:
       - source: gaming
         destination: /
 
-  # Stage Adwaita-for-Steam sources; the per-user silver-hour-steam-theme
-  # service applies them after Steam's first launch.
   - type: script
-    scripts:
-      - install-adwaita-for-steam.sh
     snippets:
-      - "chmod 0755 /usr/bin/game-performance /usr/bin/silver-hour-steam-theme"
-
-  - type: systemd
-    user:
-      enabled:
-        # Applies the Steam skin once ~/.steam/steam appears (first launch).
-        - silver-hour-steam-theme.path
+      - "chmod 0755 /usr/bin/game-performance"
+      # Refresh the desktop database: the winetricks.desktop override above
+      # lands after the RPMs are installed, i.e. after common-desktop.yml
+      # refreshed the cache.
+      - "update-desktop-database /usr/share/applications 2>/dev/null || true"
 
   # Re-assert the zsh login shell after the Steam/Wine installs above (see
   # common.yml): keep the base's /etc/default/useradd (HOME=/var/home!) and only

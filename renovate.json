@@ -21,19 +21,6 @@
       "depNameTemplate": "bazaar-companion",
       "packageNameTemplate": "https://github.com/bazaar-org/bazaar-companion",
       "datasourceTemplate": "git-refs"
-    },
-    {
-      "customType": "regex",
-      "description": "Bump the pinned Adwaita-for-Steam release",
-      "managerFilePatterns": [
-        "/^files/scripts/install-adwaita-for-steam\\.sh$/"
-      ],
-      "matchStrings": [
-        "TAG=\"(?<currentValue>[^\"]+)\""
-      ],
-      "depNameTemplate": "Adwaita-for-Steam",
-      "packageNameTemplate": "tkashkin/Adwaita-for-Steam",
-      "datasourceTemplate": "github-releases"
     }
   ]
 }
