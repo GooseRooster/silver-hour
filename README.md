@@ -23,7 +23,9 @@ It ships in two flavours sharing one base:
 - **Bazaar** as the app store (GNOME Software removed), with the Bazaar
   companion extension for "App Details"/"Uninstall" integration.
 - **Caffeine** as a system Shell extension: it keeps the session awake (and
-  activates automatically for fullscreen apps).
+  activates automatically for fullscreen apps). It is installed from
+  extensions.gnome.org rather than Fedora's package, which lags behind
+  GNOME Shell releases.
 - **Serigy** as a system Flatpak: a minimal clipboard manager (pin and re-copy
   what you need). It is *not* started automatically — launching it is left to
   the user, since a clipboard manager sees everything you copy. System Flatpaks

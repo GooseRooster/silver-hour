@@ -18,11 +18,11 @@ modules:
         # Terminal + screenshot/recording tooling.
         - ghostty
         - gpu-screen-recorder
-        # Default GNOME Shell extensions (AppIndicator tray, Caffeine) + Bazaar
-        # companion runtime + Nautilus extension runtime. Caffeine is distro
-        # packaged; the Fedora build tracks the image's GNOME version.
+        # Default GNOME Shell extension (AppIndicator tray) + Bazaar companion
+        # runtime + Nautilus extension runtime. Caffeine is installed below
+        # from extensions.gnome.org rather than distro-packaged: Fedora 45's
+        # build (60) predates GNOME Shell 51 support.
         - gnome-shell-extension-appindicator
-        - gnome-shell-extension-caffeine
         - nautilus-python
         # Default-terminal plumbing and the tray indicator runtime.
         - xdg-terminal-exec
@@ -44,6 +44,15 @@ modules:
   - type: script
     scripts:
       - install-bazaar-companion.sh
+
+  # --- Caffeine extension ------------------------------------------------
+  # Installed from extensions.gnome.org instead of the Fedora package. The
+  # module picks the newest release compatible with the image's GNOME version
+  # (currently 61 for Shell 51) and compiles its GSettings schema. 517 is the
+  # extensions.gnome.org PK for Caffeine (uuid caffeine@patapon.info).
+  - type: gnome-extensions
+    install:
+      - 517
 
   # --- Re-apply image files after the RPM installs -----------------------
   # This runs after ghostty is installed so the "Terminal" desktop-entry
