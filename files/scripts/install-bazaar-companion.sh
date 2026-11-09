@@ -8,7 +8,7 @@
 # packing step, since a system install is just the unpacked extension tree).
 set -euo pipefail
 
-REF="551ab812fda96e76fecc29a06f2adc993dd4e041"
+REF="0d3af1137b1b2407499c72d1e7aecc528eebccf5"
 UUID="bazaar-integration@kolunmi.github.io"
 DEST="/usr/share/gnome-shell/extensions/${UUID}"
 TARBALL="https://github.com/bazaar-org/bazaar-companion/archive/${REF}.tar.gz"
