@@ -21,6 +21,33 @@
       "depNameTemplate": "bazaar-companion",
       "packageNameTemplate": "https://github.com/bazaar-org/bazaar-companion",
       "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump the pinned BlueBuild CLI version",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "cli_version:\\s*['\"]?(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "blue-build/cli",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "github-actions"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchDepNames": [
+        "blue-build/cli"
+      ],
+      "allowedVersions": "/^v\\d+\\.\\d+\\.\\d+$/",
+      "minimumReleaseAge": "1 day",
+      "pinDigests": false,
+      "groupName": "bluebuild"
     }
   ]
 }
